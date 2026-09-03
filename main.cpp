@@ -1,12 +1,13 @@
 #include <SDL2/SDL.h>
+#include <stdlib.h>
 
+#include <glm/glm.hpp>
 #include <iostream>
 
 SDL_Window* window;
 SDL_Renderer* renderer;
 Uint32 start;
 bool running;
-
 // put code here to execute
 void loopSDL() {
   SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
