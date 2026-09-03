@@ -8,4 +8,9 @@ void setRenderer(SDL_Renderer* r) { renderer = r; }
 
 void nextFrame() { SDL_RenderPresent(renderer); }
 
-void setColor() {}
+void setColor(int r, int b, int g, int a) {
+  SDL_SetRenderDrawColor(renderer, r, b, g, a);
+}
+void setColor(int r, int b, int g) {
+  SDL_SetRenderDrawColor(renderer, r, b, g, 255);
+}

@@ -10,7 +10,8 @@ bool running;
 // put code here to execute
 void loopSDL() {
   SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
-  SDL_RenderDrawLine(renderer, 0, 0, 200, 350);
+  SDL_RenderDrawLine(renderer, -100, 0, 200, 350);
+  SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
 }
 
 // The code below in this file isnt the main focus for the rest of the project
