@@ -8,7 +8,7 @@
             "name": "IPQ",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/ipq.out",
+            "program": "${workspaceFolder}/main.cpp",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

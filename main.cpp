@@ -4,19 +4,29 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
+#include "camera.h"
+#include "rasterizer.h"
+#include "renderer.h"
+
 SDL_Window* window;
 SDL_Renderer* renderer;
 Uint32 start;
 bool running;
 // put code here to execute
 void loopSDL() {
-  SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
-  SDL_RenderDrawLine(renderer, -100, 0, 200, 350);
-  SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+  glm::ivec2 vertices[3];
+  vertices[0] = glm::ivec2(0, 0);
+  vertices[1] = glm::ivec2(100, 50);
+  vertices[2] = glm::ivec2(50, 200);
+  raster2DTriangle(vertices);
+  std::cout << "looping end" << std::endl;
+  setColor(0, 255, 255);
+  drawLine(0, 0, 400, 400);
 }
 
-// The code below in this file isnt the main focus for the rest of the project
+glm::ivec2 getScreenResolution() { return glm::ivec2{640, 360}; }
 
+// The code below in this file isnt the main focus for the rest of the project
 int initSDL() {
   // Initialize video and quit when failed
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -26,7 +36,8 @@ int initSDL() {
 
   // Create a window and quit when failed
   window = SDL_CreateWindow("SDL2 Test", SDL_WINDOWPOS_CENTERED,
-                            SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
+                            SDL_WINDOWPOS_CENTERED, getScreenResolution().x,
+                            getScreenResolution().y, SDL_WINDOW_SHOWN);
   if (!window) {
     std::cout << "Window failed: " << SDL_GetError() << std::endl;
     SDL_Quit();
@@ -45,6 +56,7 @@ int initSDL() {
 
   start = SDL_GetTicks();
   running = true;
+  setRenderer(renderer);
   while (running) {
     SDL_Event e;
     // poll for input
@@ -72,8 +84,6 @@ void quitSDL() {
 }
 
 int main() {
-  if (initSDL() == 0) {
-    std::cout << "Success" << std::endl;
-  }
+  initSDL();
   return 0;
 }
