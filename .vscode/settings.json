@@ -1,3 +1,8 @@
 {
-    "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, BreakBeforeBraces: Attach }"
+    "C_Cpp.clang_format_style": "{ BasedOnStyle: Google, BreakBeforeBraces: Attach }",
+    "cpp": "g++ -g *.cpp -o main -lSDL2",
+    "code-runner.executorMap": {
+        "cpp": "cd $dir; g++ -g *.cpp -o main -lSDL2; ./main",
+    },
+    "code-runner.runInTerminal": true
 }

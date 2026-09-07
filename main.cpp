@@ -1,33 +1,46 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_timer.h>
+#include <glm/ext/vector_int2.hpp>
 #include <stdlib.h>
 
 #include <glm/glm.hpp>
 #include <iostream>
 
 #include "camera.h"
+#include "mesh.h"
 #include "rasterizer.h"
 #include "renderer.h"
+#include <cstdlib>
 
-SDL_Window* window;
-SDL_Renderer* renderer;
-Uint32 start;
+SDL_Window *window;
+Uint32 previousTick;
+Uint32 currentTick;
+float delta;
 bool running;
-// put code here to execute
-void loopSDL() {
-  glm::ivec2 vertices[3];
-  vertices[0] = glm::ivec2(0, 0);
-  vertices[1] = glm::ivec2(100, 50);
-  vertices[2] = glm::ivec2(50, 200);
-  raster2DTriangle(vertices);
-  std::cout << "looping end" << std::endl;
-  setColor(0, 255, 255);
-  drawLine(0, 0, 400, 400);
+
+// Code that execute once
+void initSDL() {
+  srand(time(0));
+  glm::ivec2 vertices[3] = {glm::ivec2(0, 0), glm::ivec2(100, 50),
+                            glm::ivec2(50, 200)};
+  for (int i = 0; i < 100; i++) {
+    vertices[0] = glm::ivec2(rand() % getScreenResolution().x,
+                             rand() % getScreenResolution().y);
+    vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
+                             rand() % getScreenResolution().y);
+    vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
+                             rand() % getScreenResolution().y);
+    raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
+  }
 }
+// Code that execute every frame
+void loopSDL() {}
 
-glm::ivec2 getScreenResolution() { return glm::ivec2{640, 360}; }
-
-// The code below in this file isnt the main focus for the rest of the project
-int initSDL() {
+// Some code for initializing
+int init() {
   // Initialize video and quit when failed
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     std::cout << "Init failed: " << SDL_GetError() << std::endl;
@@ -45,45 +58,61 @@ int initSDL() {
   }
 
   // Create a renderer for the window and quit when failed
-  renderer = SDL_CreateRenderer(
-      window, -1, SDL_RENDERER_SOFTWARE);  // explicitly use software renderer
-  if (!renderer) {
+  setRenderer(SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE));
+  if (!getRenderer()) {
     std::cout << "Renderer failed: " << SDL_GetError() << std::endl;
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 1;
   }
 
-  start = SDL_GetTicks();
+  previousTick = SDL_GetTicks();
   running = true;
-  setRenderer(renderer);
+  initSDL();
+  int test = 0;
   while (running) {
     SDL_Event e;
     // poll for input
     while (SDL_PollEvent(&e)) {
       // polling for quit signal
-      if (e.type == SDL_QUIT) {
+      switch (e.type) {
+      case SDL_QUIT:
         running = false;
+        break;
+      case SDL_KEYDOWN:
+        if (!e.key.repeat) {
+          switch (e.key.keysym.sym) {
+          case SDLK_ESCAPE:
+            running = 0;
+            break;
+          case SDLK_w:
+            test++;
+            std::cout << "W pressed " << test << std::endl;
+            break;
+          }
+        }
       }
     }
-
+    currentTick = SDL_GetTicks();
+    delta = (currentTick - previousTick) / 1000.0f;
+    std::cout << "delta " << delta << std::endl;
     loopSDL();
 
-    SDL_RenderPresent(renderer);
-    // 16ms for 60fps
+    SDL_RenderPresent(getRenderer());
     SDL_Delay(16);
+    previousTick = currentTick;
   }
 
   return 0;
 }
 
 void quitSDL() {
-  SDL_DestroyRenderer(renderer);
+  SDL_DestroyRenderer(getRenderer());
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
 
 int main() {
-  initSDL();
+  init();
   return 0;
 }

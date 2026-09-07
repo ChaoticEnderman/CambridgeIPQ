@@ -2,10 +2,6 @@
 #include <stdlib.h>
 
 #include <glm/glm.hpp>
-
-namespace Mesh {
-std::vector<mesh> scene;
-
 struct mesh {
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
@@ -16,5 +12,5 @@ struct mesh {
     normals = n;
   }
 };
-static mesh addmesh(mesh m) { scene.push_back(m); }
-}  // namespace Mesh
+std::vector<mesh> scene;
+static void addmesh(mesh m) { scene.push_back(m); }

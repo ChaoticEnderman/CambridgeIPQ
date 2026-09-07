@@ -1,17 +1,20 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_render.h>
+#include <glm/glm.hpp>
 
 int r, g, b, a;
-SDL_Renderer* renderer;
+SDL_Renderer *renderer;
 
-void setRenderer(SDL_Renderer* r) { renderer = r; }
+void setRenderer(SDL_Renderer *r) { renderer = r; }
+SDL_Renderer *getRenderer() { return renderer; }
 
 void nextFrame() { SDL_RenderPresent(renderer); }
 
-void setColor(int r, int b, int g, int a) {
-  SDL_SetRenderDrawColor(renderer, r, b, g, a);
+void setColor(int r, int g, int b, int a) {
+  SDL_SetRenderDrawColor(renderer, r, g, b, a);
 }
-void setColor(int r, int b, int g) {
-  SDL_SetRenderDrawColor(renderer, r, b, g, 255);
+void setColor(int r, int g, int b) {
+  SDL_SetRenderDrawColor(renderer, r, g, b, 255);
 }
 
 void drawPoint(int x, int y) { SDL_RenderDrawPoint(renderer, x, y); }
