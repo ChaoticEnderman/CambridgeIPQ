@@ -3,6 +3,7 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_int2.hpp>
 #include <stdlib.h>
 
@@ -18,26 +19,49 @@
 SDL_Window *window;
 Uint32 previousTick;
 Uint32 currentTick;
+const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 float delta;
 bool running;
+
+glm::vec3 movement;
+glm::vec3 rotation;
 
 // Code that execute once
 void initSDL() {
   srand(time(0));
-  glm::ivec2 vertices[3] = {glm::ivec2(0, 0), glm::ivec2(100, 50),
-                            glm::ivec2(50, 200)};
-  for (int i = 0; i < 100; i++) {
-    vertices[0] = glm::ivec2(rand() % getScreenResolution().x,
-                             rand() % getScreenResolution().y);
-    vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
-                             rand() % getScreenResolution().y);
-    vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
-                             rand() % getScreenResolution().y);
-    raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
-  }
+  // glm::ivec2 vertices[3] = {glm::ivec2(0, 0), glm::ivec2(100, 50),
+  //                           glm::ivec2(50, 200)};
+  // for (int i = 0; i < 100; i++) {
+  //   vertices[0] = glm::ivec2(rand() % getScreenResolution().x,
+  //                            rand() % getScreenResolution().y);
+  //   vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
+  //                            rand() % getScreenResolution().y);
+  //   vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
+  //                            rand() % getScreenResolution().y);
+  //   raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
+  // }
 }
-// Code that execute every frame
-void loopSDL() {}
+// Code that execute every frames
+void loopSDL() {
+  clear();
+  computeRotationMatrixes();
+  glm::vec3 vertices3d[12][3] = {
+      {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 3.0f),
+       glm::vec3(1.0f, 1.0f, 5.0f)},
+      {glm::vec3(1.0f, 1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 5.0f),
+       glm::vec3(-1.0f, 1.0f, 3.0f)},
+      {glm::vec3(-1.0f, 1.0f, 3.0f), glm::vec3(-1.0f, -1.0f, 3.0f),
+       glm::vec3(1.0f, 1.0f, 3.0f)},
+      {glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f),
+       glm::vec3(1.0f, 1.0f, 3.0f)},
+  };
+  raster3DTriangle(vertices3d[0], 255, 0, 0);
+  raster3DTriangle(vertices3d[1], 200, 0, 0);
+  raster3DTriangle(vertices3d[2], 0, 255, 0);
+  raster3DTriangle(vertices3d[3], 0, 200, 0);
+
+  nextFrame();
+}
 
 // Some code for initializing
 int init() {
@@ -79,26 +103,51 @@ int init() {
       case SDL_QUIT:
         running = false;
         break;
-      case SDL_KEYDOWN:
-        if (!e.key.repeat) {
-          switch (e.key.keysym.sym) {
-          case SDLK_ESCAPE:
-            running = 0;
-            break;
-          case SDLK_w:
-            test++;
-            std::cout << "W pressed " << test << std::endl;
-            break;
-          }
-        }
       }
     }
+    movement = glm::vec3(0.0f, 0.0f, 0.0f);
+    rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+    if (keystate[SDL_SCANCODE_W]) {
+      movement.z += 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_S]) {
+      movement.z -= 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_D]) {
+      movement.x += 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_A]) {
+      movement.x -= 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_E]) {
+      movement.y += 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_Q]) {
+      movement.y -= 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_UP]) {
+      rotation.x += 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_DOWN]) {
+      rotation.x -= 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_RIGHT]) {
+      rotation.y += 1.0f;
+    }
+    if (keystate[SDL_SCANCODE_LEFT]) {
+      rotation.y -= 1.0f;
+    }
+    setCameraPosition(getCameraPosition() + movement * 0.05f);
+    setCameraRotation(getCameraRotation() + rotation / 57.0f);
     currentTick = SDL_GetTicks();
     delta = (currentTick - previousTick) / 1000.0f;
-    std::cout << "delta " << delta << std::endl;
+    std::cout << "delta " << delta << " cam position " << getCameraPosition().x
+              << " " << getCameraPosition().y << " " << getCameraPosition().z
+              << " cam rotation " << getCameraRotation().x << " "
+              << getCameraRotation().y << " " << getCameraPosition().z
+              << std::endl;
     loopSDL();
 
-    SDL_RenderPresent(getRenderer());
     SDL_Delay(16);
     previousTick = currentTick;
   }

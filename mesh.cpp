@@ -14,3 +14,4 @@ struct mesh {
 };
 std::vector<mesh> scene;
 static void addmesh(mesh m) { scene.push_back(m); }
+static mesh getMesh(int id) { return scene[id]; }

@@ -6,6 +6,7 @@ void setRenderer(SDL_Renderer *r);
 SDL_Renderer *getRenderer();
 
 void nextFrame();
+void clear();
 
 void setColor(int r, int g, int b, int a);
 void setColor(int r, int g, int b);
