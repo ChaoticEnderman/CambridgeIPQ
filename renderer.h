@@ -12,4 +12,5 @@ void setColor(int r, int g, int b, int a);
 void setColor(int r, int g, int b);
 
 void drawPoint(int x, int y);
+void drawPoints(std::vector<glm::ivec2> points, int size);
 void drawLine(int x1, int y1, int x2, int y2);

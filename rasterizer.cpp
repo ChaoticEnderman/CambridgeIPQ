@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <vector>
 
 #include "camera.h"
 #include "renderer.h"
@@ -16,15 +17,28 @@ glm::mat3x3 pitchMat = glm::mat3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
 glm::mat3x3 yawMat = glm::mat3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
 
 void raster2DLine(glm::ivec2 v1, glm::ivec2 v2) {
-  drawLine(v1.x, v1.y, v2.x, v2.y);
+  drawLine(v1.x, getScreenResolution().y - v1.y, v2.x,
+           getScreenResolution().y - v2.y);
 }
 
 void raster2DTriangle(glm::ivec2 vertices[], int r, int g, int b) {
   glm::ivec2 p;
   // Finding vectors from each vertices to each other
-  glm::ivec2 n1 = vertices[1] - vertices[0];
-  glm::ivec2 n2 = vertices[2] - vertices[1];
-  glm::ivec2 n3 = vertices[0] - vertices[2];
+  glm::ivec2 vecb = vertices[1] - vertices[0];
+  glm::ivec2 vecc = vertices[2] - vertices[0];
+  glm::ivec2 n1;
+  glm::ivec2 n2;
+  glm::ivec2 n3;
+  if (glm::cross(glm::vec3(vecb.x, vecb.y, 0), glm::vec3(vecc.x, vecb.y, 0)).z <
+      0.0f) {
+    glm::ivec2 temp = vertices[1];
+    vertices[1] = vertices[2];
+    vertices[2] = temp;
+  }
+  n1 = vertices[1] - vertices[0]; // b-a
+  n2 = vertices[2] - vertices[1]; // c-b
+  n3 = vertices[0] - vertices[2]; // a-c
+
   // Rotate the vectors to get the normals
   int temp = n1.x;
   n1.x = -n1.y;
@@ -45,7 +59,12 @@ void raster2DTriangle(glm::ivec2 vertices[], int r, int g, int b) {
                  std::max({vertices[0].y, vertices[1].y, vertices[2].y,
                            getScreenResolution().y}));
   setColor(r, g, b);
+  raster2DLine(vertices[0], vertices[1]);
+  raster2DLine(vertices[1], vertices[2]);
+  raster2DLine(vertices[2], vertices[0]);
   // Loop through all pixels inside the bounding box
+  std::vector<glm::ivec2> points;
+  int size = 0;
   for (int i = topLeft.x; i < bottomRight.x; i++) {
     for (int j = topLeft.y; j < bottomRight.y; j++) {
       p = glm::ivec2(i, j);
@@ -54,10 +73,12 @@ void raster2DTriangle(glm::ivec2 vertices[], int r, int g, int b) {
       if (glm::dot(glm::vec2(n1), glm::vec2(p - vertices[0])) > 0 &&
           glm::dot(glm::vec2(n2), glm::vec2(p - vertices[1])) > 0 &&
           glm::dot(glm::vec2(n3), glm::vec2(p - vertices[2])) > 0) {
-        drawPoint(i, getScreenResolution().y - j);
+        points.push_back(glm::ivec2(i, getScreenResolution().y - j));
+        size++;
       }
     }
   }
+  drawPoints(points, size);
 }
 
 void raster3DTriangle(glm::vec3 vertices[], int r, int g, int b) {
@@ -67,10 +88,10 @@ void raster3DTriangle(glm::vec3 vertices[], int r, int g, int b) {
   for (int i : {0, 1, 2}) {
     // undo translation
     vertices[i] = vertices[i] - getCameraPosition();
-    // undo pitch
-    vertices[i] = pitchMat * vertices[i];
     // undo yaw
     vertices[i] = yawMat * vertices[i];
+    // undo pitch
+    vertices[i] = pitchMat * vertices[i];
     if (vertices[i].z < camLen) {
       return;
     }
@@ -84,6 +105,18 @@ void raster3DTriangle(glm::vec3 vertices[], int r, int g, int b) {
     mappedVertices[i] = temp;
   }
   raster2DTriangle(mappedVertices, r, g, b);
+}
+
+// number of indices should be exactly three times the number of count
+void raster3DMesh(glm::vec3 vertices[], int indices[], int count) {
+  setColor(0, 255, 255);
+  glm::vec3 vertices3d[3];
+  for (int i = 0; i < count; i++) {
+    vertices3d[0] = vertices[indices[3 * i]];
+    vertices3d[1] = vertices[indices[3 * i + 1]];
+    vertices3d[2] = vertices[indices[3 * i + 2]];
+    raster3DTriangle(vertices3d, 255, 255, 255);
+  }
 }
 
 void computeRotationMatrixes() {

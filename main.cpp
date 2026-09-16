@@ -3,6 +3,7 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
+#include <glm/detail/qualifier.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_int2.hpp>
 #include <stdlib.h>
@@ -44,12 +45,13 @@ void initSDL() {
 // Code that execute every frames
 void loopSDL() {
   clear();
+
   computeRotationMatrixes();
   glm::vec3 vertices3d[12][3] = {
       {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 3.0f),
        glm::vec3(1.0f, 1.0f, 5.0f)},
-      {glm::vec3(1.0f, 1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 5.0f),
-       glm::vec3(-1.0f, 1.0f, 3.0f)},
+      {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 5.0f),
+       glm::vec3(1.0f, 1.0f, 5.0f)},
       {glm::vec3(-1.0f, 1.0f, 3.0f), glm::vec3(-1.0f, -1.0f, 3.0f),
        glm::vec3(1.0f, 1.0f, 3.0f)},
       {glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f),
@@ -59,7 +61,13 @@ void loopSDL() {
   raster3DTriangle(vertices3d[1], 200, 0, 0);
   raster3DTriangle(vertices3d[2], 0, 255, 0);
   raster3DTriangle(vertices3d[3], 0, 200, 0);
-
+  // glm::vec3 vertices3d[8] = {
+  //     glm::vec3(-1.0f, 1.0f, 5.0f),  glm::vec3(1.0f, 1.0f, 5.0f),
+  //     glm::vec3(-1.0f, 1.0f, 3.0f),  glm::vec3(1.0f, 1.0f, 3.0f),
+  //     glm::vec3(-1.0f, -1.0f, 5.0f), glm::vec3(1.0f, -1.0f, 5.0f),
+  //     glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f)};
+  // int indices[12] = {0, 1, 2, 1, 2, 3, 4, 5, 6, 5, 6, 7};
+  // raster3DMesh(vertices3d, indices, 4);
   nextFrame();
 }
 
@@ -137,10 +145,18 @@ int init() {
     if (keystate[SDL_SCANCODE_LEFT]) {
       rotation.y -= 1.0f;
     }
-    setCameraPosition(getCameraPosition() + movement * 0.05f);
-    setCameraRotation(getCameraRotation() + rotation / 57.0f);
+    // camera movement
+    setCameraRotation(getCameraRotation() + rotation / 20.0f);
+    float rotY = -getCameraRotation().y;
+    glm::mat2x2 rotationMatrix =
+        glm::mat2x2(cos(rotY), sin(rotY), -sin(rotY), cos(rotY));
+    glm::vec2 move2 = glm::vec2(movement.x, movement.z);
+    move2 = rotationMatrix * move2;
+    setCameraPosition(getCameraPosition() +
+                      glm::vec3(move2.x, movement.y, move2.y) * 0.15f);
     currentTick = SDL_GetTicks();
     delta = (currentTick - previousTick) / 1000.0f;
+    // profiling
     std::cout << "delta " << delta << " cam position " << getCameraPosition().x
               << " " << getCameraPosition().y << " " << getCameraPosition().z
               << " cam rotation " << getCameraRotation().x << " "

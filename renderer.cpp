@@ -26,6 +26,13 @@ void setColor(int r, int g, int b) {
 }
 
 void drawPoint(int x, int y) { SDL_RenderDrawPoint(renderer, x, y); }
+void drawPoints(std::vector<glm::ivec2> points, int size) {
+  SDL_Point p[size];
+  for (int i = 0; i < size; i++) {
+    p[i] = {points[i].x, points[i].y};
+  }
+  SDL_RenderDrawPoints(renderer, p, size);
+}
 
 void drawLine(int x1, int y1, int x2, int y2) {
   SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
