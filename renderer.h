@@ -1,3 +1,4 @@
+#include "color.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
 #include <glm/glm.hpp>
@@ -8,9 +9,8 @@ SDL_Renderer *getRenderer();
 void nextFrame();
 void clear();
 
-void setColor(int r, int g, int b, int a);
-void setColor(int r, int g, int b);
+void setColor(color color);
 
 void drawPoint(int x, int y);
-void drawPoints(std::vector<glm::ivec2> points, int size);
+void drawPoints(glm::ivec2 points[], int size);
 void drawLine(int x1, int y1, int x2, int y2);

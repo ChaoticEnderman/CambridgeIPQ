@@ -6,6 +6,9 @@
 #include "renderer.h"
 
 void raster2DLine(glm::ivec2 v1, glm::ivec2 v2);
+void raster3DLine(glm::vec3 v1, glm::vec3 v2);
+
+void raster3Dcoord();
 
 void raster2DTriangle(glm::ivec2 vertices[], int r, int g, int b);
 void raster3DTriangle(glm::vec3 vertices[], int r, int g, int b);

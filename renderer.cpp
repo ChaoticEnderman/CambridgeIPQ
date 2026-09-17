@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "camera.h"
+#include "color.h"
 
 int r, g, b, a;
 SDL_Renderer *renderer;
@@ -18,15 +19,12 @@ void clear() {
   SDL_RenderClear(renderer);
 }
 
-void setColor(int r, int g, int b, int a) {
-  SDL_SetRenderDrawColor(renderer, r, g, b, a);
-}
-void setColor(int r, int g, int b) {
-  SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+void setColor(color color) {
+  SDL_SetRenderDrawColor(renderer, color.r, color.b, color.g, color.a);
 }
 
 void drawPoint(int x, int y) { SDL_RenderDrawPoint(renderer, x, y); }
-void drawPoints(std::vector<glm::ivec2> points, int size) {
+void drawPoints(glm::ivec2 points[], int size) {
   SDL_Point p[size];
   for (int i = 0; i < size; i++) {
     p[i] = {points[i].x, points[i].y};

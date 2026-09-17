@@ -3,6 +3,7 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
+#include <algorithm>
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_int2.hpp>
@@ -10,12 +11,14 @@
 
 #include <glm/glm.hpp>
 #include <iostream>
+#include <numbers>
 
 #include "camera.h"
 #include "mesh.h"
 #include "rasterizer.h"
-#include "renderer.h"
 #include <cstdlib>
+
+constexpr double pi = 3.14159265358979323846;
 
 SDL_Window *window;
 Uint32 previousTick;
@@ -47,27 +50,43 @@ void loopSDL() {
   clear();
 
   computeRotationMatrixes();
-  glm::vec3 vertices3d[12][3] = {
-      {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 3.0f),
-       glm::vec3(1.0f, 1.0f, 5.0f)},
-      {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 5.0f),
-       glm::vec3(1.0f, 1.0f, 5.0f)},
-      {glm::vec3(-1.0f, 1.0f, 3.0f), glm::vec3(-1.0f, -1.0f, 3.0f),
-       glm::vec3(1.0f, 1.0f, 3.0f)},
-      {glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f),
-       glm::vec3(1.0f, 1.0f, 3.0f)},
-  };
-  raster3DTriangle(vertices3d[0], 255, 0, 0);
-  raster3DTriangle(vertices3d[1], 200, 0, 0);
-  raster3DTriangle(vertices3d[2], 0, 255, 0);
-  raster3DTriangle(vertices3d[3], 0, 200, 0);
-  // glm::vec3 vertices3d[8] = {
-  //     glm::vec3(-1.0f, 1.0f, 5.0f),  glm::vec3(1.0f, 1.0f, 5.0f),
-  //     glm::vec3(-1.0f, 1.0f, 3.0f),  glm::vec3(1.0f, 1.0f, 3.0f),
-  //     glm::vec3(-1.0f, -1.0f, 5.0f), glm::vec3(1.0f, -1.0f, 5.0f),
-  //     glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f)};
-  // int indices[12] = {0, 1, 2, 1, 2, 3, 4, 5, 6, 5, 6, 7};
-  // raster3DMesh(vertices3d, indices, 4);
+  // glm::vec3 vertices3d[12][3] = {
+  //     {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 3.0f),
+  //      glm::vec3(1.0f, 1.0f, 5.0f)},
+  //     {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 5.0f),
+  //      glm::vec3(1.0f, 1.0f, 5.0f)},
+  //     {glm::vec3(-1.0f, 1.0f, 3.0f), glm::vec3(-1.0f, -1.0f, 3.0f),
+  //      glm::vec3(1.0f, 1.0f, 3.0f)},
+  //     {glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f),
+  //      glm::vec3(1.0f, 1.0f, 3.0f)},
+  // };
+  // raster3DTriangle(vertices3d[0], 255, 0, 0);
+  // raster3DTriangle(vertices3d[1], 200, 0, 0);
+  // raster3DTriangle(vertices3d[2], 0, 255, 0);
+  // raster3DTriangle(vertices3d[3], 0, 200, 0);
+  float radius = 1.0f;
+  glm::vec3 pos = glm::vec3(0.0f, 0.0f, 4.0f);
+  glm::vec3 vertices3d[8] = {glm::vec3(-radius, radius, radius) + pos,
+                             glm::vec3(radius, radius, radius) + pos,
+                             glm::vec3(-radius, radius, -radius) + pos,
+                             glm::vec3(radius, radius, -radius) + pos,
+                             glm::vec3(-radius, -radius, radius) + pos,
+                             glm::vec3(radius, -radius, radius) + pos,
+                             glm::vec3(-radius, -radius, -radius) + pos,
+                             glm::vec3(radius, -radius, -radius) + pos};
+  int indices[36] = {// top face
+                     0, 1, 2, 1, 3, 2,
+                     // bottom face
+                     6, 5, 4, 6, 7, 5,
+                     // front face
+                     0, 5, 1, 0, 4, 5,
+                     // back face
+                     2, 3, 6, 3, 7, 6,
+                     // left face
+                     0, 2, 4, 2, 6, 4,
+                     // right face
+                     1, 5, 3, 3, 5, 7};
+  raster3DMesh(vertices3d, indices, 12);
   nextFrame();
 }
 
@@ -134,10 +153,10 @@ int init() {
       movement.y -= 1.0f;
     }
     if (keystate[SDL_SCANCODE_UP]) {
-      rotation.x += 1.0f;
+      rotation.x -= 1.0f;
     }
     if (keystate[SDL_SCANCODE_DOWN]) {
-      rotation.x -= 1.0f;
+      rotation.x += 1.0f;
     }
     if (keystate[SDL_SCANCODE_RIGHT]) {
       rotation.y += 1.0f;
@@ -147,13 +166,16 @@ int init() {
     }
     // camera movement
     setCameraRotation(getCameraRotation() + rotation / 20.0f);
+    setCameraRotation(glm::vec3(
+        std::clamp(getCameraRotation().x, (float)-pi / 2, (float)pi / 2),
+        getCameraRotation().y, 0.0f));
     float rotY = -getCameraRotation().y;
     glm::mat2x2 rotationMatrix =
         glm::mat2x2(cos(rotY), sin(rotY), -sin(rotY), cos(rotY));
     glm::vec2 move2 = glm::vec2(movement.x, movement.z);
     move2 = rotationMatrix * move2;
     setCameraPosition(getCameraPosition() +
-                      glm::vec3(move2.x, movement.y, move2.y) * 0.15f);
+                      glm::vec3(move2.x, movement.y, move2.y) * 0.10f);
     currentTick = SDL_GetTicks();
     delta = (currentTick - previousTick) / 1000.0f;
     // profiling
@@ -164,7 +186,7 @@ int init() {
               << std::endl;
     loopSDL();
 
-    SDL_Delay(16);
+    // SDL_Delay(16);
     previousTick = currentTick;
   }
 
