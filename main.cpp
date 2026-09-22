@@ -7,16 +7,17 @@
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_int2.hpp>
+#include <iterator>
 #include <stdlib.h>
 
+#include <chrono>
 #include <glm/glm.hpp>
 #include <iostream>
-#include <numbers>
 
 #include "camera.h"
-#include "mesh.h"
 #include "rasterizer.h"
 #include <cstdlib>
+#include <vector>
 
 constexpr double pi = 3.14159265358979323846;
 
@@ -26,6 +27,8 @@ Uint32 currentTick;
 const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 float delta;
 bool running;
+float accFrameDelta = 0.0f;
+int accFrames = 0;
 
 glm::vec3 movement;
 glm::vec3 rotation;
@@ -45,6 +48,29 @@ void initSDL() {
   //   raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
   // }
 }
+
+float radius = 1.0f;
+glm::vec3 pos = glm::vec3(0.0f, 0.0f, 4.0f);
+glm::vec3 vertices3d[8] = {glm::vec3(-radius, radius, radius) + pos,
+                           glm::vec3(radius, radius, radius) + pos,
+                           glm::vec3(-radius, radius, -radius) + pos,
+                           glm::vec3(radius, radius, -radius) + pos,
+                           glm::vec3(-radius, -radius, radius) + pos,
+                           glm::vec3(radius, -radius, radius) + pos,
+                           glm::vec3(-radius, -radius, -radius) + pos,
+                           glm::vec3(radius, -radius, -radius) + pos};
+int indices[36] = { // top face
+    0, 1, 2, 1, 3, 2,
+    // bottom face
+    6, 5, 4, 6, 7, 5,
+    // front face
+    0, 5, 1, 0, 4, 5,
+    // back face
+    2, 3, 6, 3, 7, 6,
+    // left face
+    0, 2, 4, 2, 6, 4,
+    // right face
+    1, 5, 3, 3, 5, 7};
 // Code that execute every frames
 void loopSDL() {
   clear();
@@ -64,29 +90,17 @@ void loopSDL() {
   // raster3DTriangle(vertices3d[1], 200, 0, 0);
   // raster3DTriangle(vertices3d[2], 0, 255, 0);
   // raster3DTriangle(vertices3d[3], 0, 200, 0);
-  float radius = 1.0f;
-  glm::vec3 pos = glm::vec3(0.0f, 0.0f, 4.0f);
-  glm::vec3 vertices3d[8] = {glm::vec3(-radius, radius, radius) + pos,
-                             glm::vec3(radius, radius, radius) + pos,
-                             glm::vec3(-radius, radius, -radius) + pos,
-                             glm::vec3(radius, radius, -radius) + pos,
-                             glm::vec3(-radius, -radius, radius) + pos,
-                             glm::vec3(radius, -radius, radius) + pos,
-                             glm::vec3(-radius, -radius, -radius) + pos,
-                             glm::vec3(radius, -radius, -radius) + pos};
-  int indices[36] = {// top face
-                     0, 1, 2, 1, 3, 2,
-                     // bottom face
-                     6, 5, 4, 6, 7, 5,
-                     // front face
-                     0, 5, 1, 0, 4, 5,
-                     // back face
-                     2, 3, 6, 3, 7, 6,
-                     // left face
-                     0, 2, 4, 2, 6, 4,
-                     // right face
-                     1, 5, 3, 3, 5, 7};
-  raster3DMesh(vertices3d, indices, 12);
+  std::vector<glm::vec3> vecVertices3d(std::begin(vertices3d),
+                                       std::end(vertices3d));
+  std::vector<int> vecIndices(std::begin(indices), std::end(indices));
+  mesh m = mesh(vecVertices3d, std::vector<glm::vec3>(), vecIndices);
+  auto start = std::chrono::steady_clock::now();
+  raster3DMesh(m);
+  auto end = std::chrono::steady_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+  std::cout << "Elapsed: " << duration.count() << " us\n";
   nextFrame();
 }
 
@@ -178,6 +192,14 @@ int init() {
                       glm::vec3(move2.x, movement.y, move2.y) * 0.10f);
     currentTick = SDL_GetTicks();
     delta = (currentTick - previousTick) / 1000.0f;
+    accFrameDelta += delta;
+    accFrames += 1;
+    if (accFrameDelta > 1.0f) {
+      std::cout << "fps this second " << accFrames << std::endl;
+      accFrameDelta -= 1.0f;
+      accFrames = 0;
+    }
+
     // profiling
     std::cout << "delta " << delta << " cam position " << getCameraPosition().x
               << " " << getCameraPosition().y << " " << getCameraPosition().z

@@ -3,6 +3,7 @@
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_int2.hpp>
+#include <ostream>
 #include <stdlib.h>
 
 #include <chrono>
@@ -11,7 +12,9 @@
 #include <vector>
 
 #include "camera.h"
+#include "mesh.h"
 #include "renderer.h"
+
 float camLen = 0.1f;
 
 glm::mat4x4 cameraMat =
@@ -52,7 +55,6 @@ void raster3Dcoord() {
 }
 
 void raster2DTriangle(glm::ivec2 vertices[], color c) {
-  // auto start = std::chrono::steady_clock::now();
   //  Finding vectors from each vertices to each other
   glm::ivec2 vecb = vertices[1] - vertices[0];
   glm::ivec2 vecc = vertices[2] - vertices[0];
@@ -92,6 +94,7 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
   raster2DLine(vertices[0], vertices[1]);
   raster2DLine(vertices[1], vertices[2]);
   raster2DLine(vertices[2], vertices[0]);
+
   // return;
   //  Loop through all pixels inside the bounding box
   glm::ivec2 points[getScreenResolution().x * getScreenResolution().y >> 1];
@@ -115,13 +118,15 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
                      n3.y * (topLeft.y + 1 - vertices[2].y) - startDot2;
 
   auto start = std::chrono::steady_clock::now();
+  auto end = std::chrono::steady_clock::now();
+
   for (int i = topLeft.x; i < bottomRight.x; i++) {
     float innerDot0 = startDot0, innerDot1 = startDot1, innerDot2 = startDot2;
     for (int j = topLeft.y; j < bottomRight.y; j++) {
       // If the vector is generally in the general same direction of each
       // normals, for all three normals, render it
       if (innerDot0 > 0.0f & innerDot1 > 0.0f & innerDot2 > 0.0f) {
-        points[size] = glm::ivec2(i, getScreenResolution().y - j);
+        points[size] = glm::ivec2(i, 360 - j);
         size++;
       }
       innerDot0 += deltaDot0y;
@@ -132,6 +137,10 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
     startDot1 += deltaDot1x;
     startDot2 += deltaDot2x;
   }
+  end = std::chrono::steady_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  std::cout << "loop elapsed: " << duration.count() << " us\n";
 
   // glm::ivec2 p = glm::ivec2(0, 0);
   // for (int i = topLeft.x; i < bottomRight.x; i++) {
@@ -149,14 +158,12 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
   // }
 
   drawPoints(points, size);
-  auto end = std::chrono::steady_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
   // std::cout << "Elapsed: " << duration.count() << " us\n";
 }
 
 void raster3DTriangle(glm::vec3 vertices[], color c) {
+  auto start = std::chrono::steady_clock::now();
+
   glm::ivec2 mappedVertices[3] = {};
   // for loop syntax to reverse winding order
   for (int i : {0, 1, 2}) {
@@ -186,13 +193,12 @@ void raster3DTriangle(glm::vec3 vertices[], color c) {
 }
 
 // number of indices should be exactly three times the number of count
-void raster3DMesh(glm::vec3 vertices[], int indices[], int count) {
-  std::cout << "count is " << count << std::endl;
-  for (int i = 0; i < count; i++) {
+void raster3DMesh(mesh m) {
+  for (int i = 0; i < m.getIndices().size() / 3; i++) {
     glm::vec3 vertices3d[3];
-    vertices3d[0] = vertices[indices[3 * i]];
-    vertices3d[1] = vertices[indices[3 * i + 1]];
-    vertices3d[2] = vertices[indices[3 * i + 2]];
+    vertices3d[0] = m.getVertices()[m.getIndices()[3 * i]];
+    vertices3d[1] = m.getVertices()[m.getIndices()[3 * i + 1]];
+    vertices3d[2] = m.getVertices()[m.getIndices()[3 * i + 2]];
     raster3DTriangle(vertices3d, color::base::white);
   }
 }
