@@ -1,3 +1,4 @@
+#pragma once
 #include <algorithm>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_float3x3.hpp>
@@ -61,12 +62,13 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
   glm::ivec2 n1;
   glm::ivec2 n2;
   glm::ivec2 n3;
-  if (glm::cross(glm::vec3(vecb.x, vecb.y, 0), glm::vec3(vecc.x, vecb.y, 0)).z <
-      0.0f) {
-    glm::ivec2 temp = vertices[1];
-    vertices[1] = vertices[2];
-    vertices[2] = temp;
-  }
+  // if (glm::cross(glm::vec3(vecb.x, vecb.y, 0), glm::vec3(vecc.x, vecb.y,
+  // 0)).z <
+  //     0.0f) {
+  //   glm::ivec2 temp = vertices[1];
+  //   vertices[1] = vertices[2];
+  //   vertices[2] = temp;
+  // }
   n1 = vertices[1] - vertices[0]; // b-a
   n2 = vertices[2] - vertices[1]; // c-b
   n3 = vertices[0] - vertices[2]; // a-c
@@ -82,14 +84,14 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
   n3.x = -n3.y;
   n3.y = temp;
   // Find the bounding box of the triangle
-  glm::ivec2 topLeft =
-      glm::ivec2(std::min({vertices[0].x, vertices[1].x, vertices[2].x, 0}),
-                 std::min({vertices[0].y, vertices[1].y, vertices[2].y, 0}));
-  glm::ivec2 bottomRight =
-      glm::ivec2(std::max({vertices[0].x, vertices[1].x, vertices[2].x,
-                           getScreenResolution().x}),
-                 std::max({vertices[0].y, vertices[1].y, vertices[2].y,
-                           getScreenResolution().y}));
+  glm::ivec2 topLeft = glm::ivec2(
+      std::max({std::min({vertices[0].x, vertices[1].x, vertices[2].x}), 0}),
+      std::max({std::min({vertices[0].y, vertices[1].y, vertices[2].y}), 0}));
+  glm::ivec2 bottomRight = glm::ivec2(
+      std::min({std::max({vertices[0].x, vertices[1].x, vertices[2].x}),
+                getScreenResolution().x}),
+      std::min({std::max({vertices[0].y, vertices[1].y, vertices[2].y}),
+                getScreenResolution().x}));
   setColor(c);
   raster2DLine(vertices[0], vertices[1]);
   raster2DLine(vertices[1], vertices[2]);
@@ -97,7 +99,7 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
 
   // return;
   //  Loop through all pixels inside the bounding box
-  glm::ivec2 points[getScreenResolution().x * getScreenResolution().y >> 1];
+  glm::ivec2 points[getScreenResolution().x * getScreenResolution().y];
   int size = 0;
 
   // optimization from 17000us to 1100us
@@ -126,7 +128,7 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
       // If the vector is generally in the general same direction of each
       // normals, for all three normals, render it
       if (innerDot0 > 0.0f & innerDot1 > 0.0f & innerDot2 > 0.0f) {
-        points[size] = glm::ivec2(i, 360 - j);
+        points[size] = glm::ivec2(i, 640 - j);
         size++;
       }
       innerDot0 += deltaDot0y;
@@ -140,7 +142,7 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
   end = std::chrono::steady_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  std::cout << "loop elapsed: " << duration.count() << " us\n";
+  // std::cout << "loop elapsed: " << duration.count() << " us\n";
 
   // glm::ivec2 p = glm::ivec2(0, 0);
   // for (int i = topLeft.x; i < bottomRight.x; i++) {

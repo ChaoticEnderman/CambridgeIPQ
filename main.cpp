@@ -15,6 +15,7 @@
 #include <iostream>
 
 #include "camera.h"
+#include "color.h"
 #include "rasterizer.h"
 #include <cstdlib>
 #include <vector>
@@ -71,6 +72,50 @@ int indices[36] = { // top face
     0, 2, 4, 2, 6, 4,
     // right face
     1, 5, 3, 3, 5, 7};
+color::base colors[36] = {
+    // top face
+    color::base::red,
+    color::base::red,
+    color::base::red,
+    color::base::red,
+    color::base::red,
+    color::base::red,
+    // bottom face
+    color::base::green,
+    color::base::green,
+    color::base::green,
+    color::base::green,
+    color::base::green,
+    color::base::green,
+    // front face
+    color::base::blue,
+    color::base::blue,
+    color::base::blue,
+    color::base::blue,
+    color::base::blue,
+    color::base::blue,
+    // back face
+    color::base::yellow,
+    color::base::yellow,
+    color::base::yellow,
+    color::base::yellow,
+    color::base::yellow,
+    color::base::yellow,
+    // left face
+    color::base::cyan,
+    color::base::cyan,
+    color::base::cyan,
+    color::base::cyan,
+    color::base::cyan,
+    color::base::cyan,
+    // right face
+    color::base::magenta,
+    color::base::magenta,
+    color::base::magenta,
+    color::base::magenta,
+    color::base::magenta,
+    color::base::magenta,
+};
 // Code that execute every frames
 void loopSDL() {
   clear();
@@ -93,7 +138,8 @@ void loopSDL() {
   std::vector<glm::vec3> vecVertices3d(std::begin(vertices3d),
                                        std::end(vertices3d));
   std::vector<int> vecIndices(std::begin(indices), std::end(indices));
-  mesh m = mesh(vecVertices3d, std::vector<glm::vec3>(), vecIndices);
+  std::vector<color> vecColors(std::begin(colors), std::end(colors));
+  mesh m = mesh(vecVertices3d, std::vector<glm::vec3>(), vecColors, vecIndices);
   auto start = std::chrono::steady_clock::now();
   raster3DMesh(m);
   auto end = std::chrono::steady_clock::now();
@@ -178,8 +224,9 @@ int init() {
     if (keystate[SDL_SCANCODE_LEFT]) {
       rotation.y -= 1.0f;
     }
+
     // camera movement
-    setCameraRotation(getCameraRotation() + rotation / 20.0f);
+    setCameraRotation(getCameraRotation() + rotation * delta * 5.0f);
     setCameraRotation(glm::vec3(
         std::clamp(getCameraRotation().x, (float)-pi / 2, (float)pi / 2),
         getCameraRotation().y, 0.0f));
@@ -189,16 +236,8 @@ int init() {
     glm::vec2 move2 = glm::vec2(movement.x, movement.z);
     move2 = rotationMatrix * move2;
     setCameraPosition(getCameraPosition() +
-                      glm::vec3(move2.x, movement.y, move2.y) * 0.10f);
+                      glm::vec3(move2.x, movement.y, move2.y) * delta * 10.0f);
     currentTick = SDL_GetTicks();
-    delta = (currentTick - previousTick) / 1000.0f;
-    accFrameDelta += delta;
-    accFrames += 1;
-    if (accFrameDelta > 1.0f) {
-      std::cout << "fps this second " << accFrames << std::endl;
-      accFrameDelta -= 1.0f;
-      accFrames = 0;
-    }
 
     // profiling
     std::cout << "delta " << delta << " cam position " << getCameraPosition().x
@@ -207,6 +246,15 @@ int init() {
               << getCameraRotation().y << " " << getCameraPosition().z
               << std::endl;
     loopSDL();
+
+    delta = (currentTick - previousTick) / 1000.0f;
+    accFrameDelta += delta;
+    accFrames += 1;
+    if (accFrameDelta > 1.0f) {
+      std::cout << "fps this second " << accFrames << std::endl;
+      accFrameDelta -= 1.0f;
+      accFrames = 0;
+    }
 
     // SDL_Delay(16);
     previousTick = currentTick;
