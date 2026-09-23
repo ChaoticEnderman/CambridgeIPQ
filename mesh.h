@@ -6,19 +6,6 @@
 
 #include "color.h"
 
-struct mesh {
-  std::vector<glm::vec3> vertices;
-  std::vector<glm::vec3> normals;
-  std::vector<color> vertexColors;
-  std::vector<int> indices;
-
-  mesh(std::vector<glm::vec3> v, std::vector<glm::vec3> n, std::vector<color> c,
-       std::vector<int> i);
-  std::vector<glm::vec3> getVertices();
-  std::vector<glm::vec3> getNormals();
-  std::vector<color> getVertexColors();
-  std::vector<int> getIndices();
-};
 struct material {
   color albedo;
   bool metallic;
@@ -26,14 +13,47 @@ struct material {
   float emission;
   float transmission;
   float ior;
-  material(color c, bool m, float r, float e, float t, float i);
-  color getColor();
+
+  color getAlbedo();
   bool getMetallic();
   float getRoughness();
   float getEmission();
   float getTransmission();
   float getIOR();
+
+  enum class base {
+    redFill,
+    greenFill,
+    blueFill,
+    silver,
+    gold,
+    mirror,
+    water,
+    glassFrosted,
+    glassPure,
+    concrete,
+    wood,
+    laminate
+  };
+  material(color c, bool m, float r, float e, float t, float i);
+  material(base material);
 };
 
-static void addmesh(mesh m);
-static mesh getMesh(int id);
+struct mesh {
+  std::vector<glm::vec3> vertices;
+  std::vector<glm::vec3> normals;
+  std::vector<color> vertexColors;
+  std::vector<int> indices;
+  material mat;
+
+  mesh(std::vector<glm::vec3> v, std::vector<glm::vec3> n, std::vector<color> c,
+       std::vector<int> i, material m);
+  std::vector<glm::vec3> getVertices();
+  std::vector<glm::vec3> getNormals();
+  std::vector<color> getVertexColors();
+  std::vector<int> getIndices();
+};
+
+// std::vector<mesh> scene;
+// static void addmesh(mesh m) { scene.push_back(m); }
+// static mesh getMesh(int id) { return scene[id]; }

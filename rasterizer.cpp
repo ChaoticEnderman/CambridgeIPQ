@@ -1,7 +1,9 @@
 #pragma once
 #include <algorithm>
+#include <cmath>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_float3x3.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_int2.hpp>
 #include <ostream>
@@ -17,9 +19,16 @@
 #include "renderer.h"
 
 float camLen = 0.1f;
+constexpr int resX = getScreenResolutionX();
+constexpr int resY = getScreenResolutionY();
+float zBuffer[resX][resY];
 
 glm::mat4x4 cameraMat =
     glm::mat4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+
+inline float cross2D(glm::ivec2 a, glm::ivec2 b) {
+  return a.x * b.y - a.y * b.x;
+}
 
 void raster2DLine(glm::ivec2 v1, glm::ivec2 v2) {
   drawLine(v1.x, getScreenResolution().y - v1.y, v2.x,
@@ -55,34 +64,9 @@ void raster3Dcoord() {
   raster3DLine(glm::vec3(0, 0, 5), glm::vec3(0, 0, -5));
 }
 
-void raster2DTriangle(glm::ivec2 vertices[], color c) {
-  //  Finding vectors from each vertices to each other
-  glm::ivec2 vecb = vertices[1] - vertices[0];
-  glm::ivec2 vecc = vertices[2] - vertices[0];
-  glm::ivec2 n1;
-  glm::ivec2 n2;
-  glm::ivec2 n3;
-  // if (glm::cross(glm::vec3(vecb.x, vecb.y, 0), glm::vec3(vecc.x, vecb.y,
-  // 0)).z <
-  //     0.0f) {
-  //   glm::ivec2 temp = vertices[1];
-  //   vertices[1] = vertices[2];
-  //   vertices[2] = temp;
-  // }
-  n1 = vertices[1] - vertices[0]; // b-a
-  n2 = vertices[2] - vertices[1]; // c-b
-  n3 = vertices[0] - vertices[2]; // a-c
-
-  // Rotate the vectors to get the normals
-  int temp = n1.x;
-  n1.x = -n1.y;
-  n1.y = temp;
-  temp = n2.x;
-  n2.x = -n2.y;
-  n2.y = temp;
-  temp = n3.x;
-  n3.x = -n3.y;
-  n3.y = temp;
+// taking optional z depth of each pixels for depth buffer
+void raster2DTriangle(glm::ivec2 vertices[], color c,
+                      std::array<float, 3> depth = {0.0f, 0.0f, 0.0f}) {
   // Find the bounding box of the triangle
   glm::ivec2 topLeft = glm::ivec2(
       std::max({std::min({vertices[0].x, vertices[1].x, vertices[2].x}), 0}),
@@ -93,51 +77,76 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
       std::min({std::max({vertices[0].y, vertices[1].y, vertices[2].y}),
                 getScreenResolution().x}));
   setColor(c);
-  raster2DLine(vertices[0], vertices[1]);
-  raster2DLine(vertices[1], vertices[2]);
-  raster2DLine(vertices[2], vertices[0]);
+  // raster2DLine(vertices[0], vertices[1]);
+  // raster2DLine(vertices[1], vertices[2]);
+  // raster2DLine(vertices[2], vertices[0]);
 
   // return;
   //  Loop through all pixels inside the bounding box
   glm::ivec2 points[getScreenResolution().x * getScreenResolution().y];
   int size = 0;
 
-  // optimization from 17000us to 1100us
-  float startDot0 = glm::dot(glm::vec2(n1), glm::vec2(topLeft - vertices[0]));
-  float startDot1 = glm::dot(glm::vec2(n2), glm::vec2(topLeft - vertices[1]));
-  float startDot2 = glm::dot(glm::vec2(n3), glm::vec2(topLeft - vertices[2]));
-  float deltaDot0x = n1.x * (topLeft.x + 1 - vertices[0].x) +
-                     n1.y * (topLeft.y - vertices[0].y) - startDot0;
-  float deltaDot1x = n2.x * (topLeft.x + 1 - vertices[1].x) +
-                     n2.y * (topLeft.y - vertices[1].y) - startDot1;
-  float deltaDot2x = n3.x * (topLeft.x + 1 - vertices[2].x) +
-                     n3.y * (topLeft.y - vertices[2].y) - startDot2;
-  float deltaDot0y = n1.x * (topLeft.x - vertices[0].x) +
-                     n1.y * (topLeft.y + 1 - vertices[0].y) - startDot0;
-  float deltaDot1y = n2.x * (topLeft.x - vertices[1].x) +
-                     n2.y * (topLeft.y + 1 - vertices[1].y) - startDot1;
-  float deltaDot2y = n3.x * (topLeft.x - vertices[2].x) +
-                     n3.y * (topLeft.y + 1 - vertices[2].y) - startDot2;
+  // vectors
+  glm::ivec2 ab = vertices[1] - vertices[0];
+  glm::ivec2 bc = vertices[2] - vertices[1];
+  glm::ivec2 ca = vertices[0] - vertices[2];
+  glm::ivec2 ap = topLeft - vertices[0];
+  glm::ivec2 bp = topLeft - vertices[1];
+  glm::ivec2 cp = topLeft - vertices[2];
 
-  auto start = std::chrono::steady_clock::now();
-  auto end = std::chrono::steady_clock::now();
+  // area for calculating barycentric weight in one step
+  float area = cross2D(vertices[1] - vertices[0], vertices[2] - vertices[0]);
+
+  // weights of each parts unnormalized
+  float startLambdaA = cross2D(bc, bp) / area;
+  float startLambdaB = cross2D(ca, cp) / area;
+  float startLambdaC = cross2D(ab, ap) / area;
+  float startZDepth = startLambdaA * depth[0] + startLambdaB * depth[1] +
+                      startLambdaC * depth[2];
+  float deltaLambdaAx =
+      cross2D(bc, bp + glm::ivec2(1, 0)) / area - startLambdaA;
+  float deltaLambdaBx =
+      cross2D(ca, cp + glm::ivec2(1, 0)) / area - startLambdaB;
+  float deltaLambdaCx =
+      cross2D(ab, ap + glm::ivec2(1, 0)) / area - startLambdaC;
+  float deltaLambdaAy =
+      cross2D(bc, bp + glm::ivec2(0, 1)) / area - startLambdaA;
+  float deltaLambdaBy =
+      cross2D(ca, cp + glm::ivec2(0, 1)) / area - startLambdaB;
+  float deltaLambdaCy =
+      cross2D(ab, ap + glm::ivec2(0, 1)) / area - startLambdaC;
+  float deltaZDepthx = (startLambdaA + deltaLambdaAx) * depth[0] +
+                       (startLambdaB + deltaLambdaBx) * depth[1] +
+                       (startLambdaC + deltaLambdaCx) * depth[2] - startZDepth;
+  float deltaZDepthy = (startLambdaA + deltaLambdaAy) * depth[0] +
+                       (startLambdaB + deltaLambdaBy) * depth[1] +
+                       (startLambdaC + deltaLambdaCy) * depth[2] - startZDepth;
+
+  std::chrono::time_point start = std::chrono::steady_clock::now();
+  std::chrono::time_point end = std::chrono::steady_clock::now();
 
   for (int i = topLeft.x; i < bottomRight.x; i++) {
-    float innerDot0 = startDot0, innerDot1 = startDot1, innerDot2 = startDot2;
+    float innerLambdaA = startLambdaA, innerLambdaB = startLambdaB,
+          innerLambdaC = startLambdaC;
+    float innerZDepth = startZDepth;
     for (int j = topLeft.y; j < bottomRight.y; j++) {
-      // If the vector is generally in the general same direction of each
-      // normals, for all three normals, render it
-      if (innerDot0 > 0.0f & innerDot1 > 0.0f & innerDot2 > 0.0f) {
-        points[size] = glm::ivec2(i, 640 - j);
-        size++;
+      if (innerLambdaA > 0.0f && innerLambdaB > 0.0f && innerLambdaC > 0.0f &&
+          innerZDepth < zBuffer[i][j]) {
+        if (innerZDepth > 0 && innerZDepth < zBuffer[i][j]) {
+          points[size] = glm::ivec2(i, 640 - j);
+          size++;
+          zBuffer[i][j] = innerZDepth;
+        }
       }
-      innerDot0 += deltaDot0y;
-      innerDot1 += deltaDot1y;
-      innerDot2 += deltaDot2y;
+      innerLambdaA += deltaLambdaAy;
+      innerLambdaB += deltaLambdaBy;
+      innerLambdaC += deltaLambdaCy;
+      innerZDepth += deltaZDepthy;
     }
-    startDot0 += deltaDot0x;
-    startDot1 += deltaDot1x;
-    startDot2 += deltaDot2x;
+    startLambdaA += deltaLambdaAx;
+    startLambdaB += deltaLambdaBx;
+    startLambdaC += deltaLambdaCx;
+    startZDepth += deltaZDepthx;
   }
   end = std::chrono::steady_clock::now();
   auto duration =
@@ -164,8 +173,6 @@ void raster2DTriangle(glm::ivec2 vertices[], color c) {
 }
 
 void raster3DTriangle(glm::vec3 vertices[], color c) {
-  auto start = std::chrono::steady_clock::now();
-
   glm::ivec2 mappedVertices[3] = {};
   // for loop syntax to reverse winding order
   for (int i : {0, 1, 2}) {
@@ -180,7 +187,7 @@ void raster3DTriangle(glm::vec3 vertices[], color c) {
     vertices[i] = cameraMat * glm::vec4(vertices[i], 1);
 
     if (vertices[i].z < camLen) {
-      return;
+      // return;
     }
 
     glm::vec2 temp = glm::vec2(vertices[i].x / vertices[i].z * camLen,
@@ -191,7 +198,9 @@ void raster3DTriangle(glm::vec3 vertices[], color c) {
     temp.y += getScreenResolution().y >> 1;
     mappedVertices[i] = temp;
   }
-  raster2DTriangle(mappedVertices, c);
+  raster2DTriangle(
+      mappedVertices, c,
+      std::array<float, 3>{vertices[0].z, vertices[1].z, vertices[2].z});
 }
 
 // number of indices should be exactly three times the number of count
@@ -199,9 +208,9 @@ void raster3DMesh(mesh m) {
   for (int i = 0; i < m.getIndices().size() / 3; i++) {
     glm::vec3 vertices3d[3];
     vertices3d[0] = m.getVertices()[m.getIndices()[3 * i]];
-    vertices3d[1] = m.getVertices()[m.getIndices()[3 * i + 1]];
-    vertices3d[2] = m.getVertices()[m.getIndices()[3 * i + 2]];
-    raster3DTriangle(vertices3d, color::base::white);
+    vertices3d[1] = m.getVertices()[m.getIndices()[3 * i + 2]];
+    vertices3d[2] = m.getVertices()[m.getIndices()[3 * i + 1]];
+    raster3DTriangle(vertices3d, m.getVertexColors()[3 * i]);
   }
 }
 
@@ -218,6 +227,14 @@ void computeRotationMatrixes() {
       glm::mat3x3(cos(yaw), 0, -sin(yaw), 0, 1, 0, sin(yaw), 0, cos(yaw));
   cameraMat = pitchMat * yawMat;
   cameraMat *= transMat;
+}
+
+void clearZBuffer() {
+  for (int i = 0; i < resX; i++) {
+    for (int j = 0; j < resY; j++) {
+      zBuffer[i][j] = 1000;
+    }
+  }
 }
 
 void rasterPoint(glm::vec3 vertices) {

@@ -1,8 +1,15 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 struct color {
   uint8_t r, g, b, a;
+
+  color() {
+    r = 0;
+    g = 0;
+    b = 0;
+  }
 
   color(uint8_t R, uint8_t G, uint8_t B) {
     r = R;
@@ -80,5 +87,10 @@ struct color {
       a = 255;
       break;
     }
+  }
+
+  std::string toString() {
+    return "(" + std::to_string(r) + " " + std::to_string(g) + " " +
+           std::to_string(b) + " " + std::to_string(a) + ")";
   }
 };

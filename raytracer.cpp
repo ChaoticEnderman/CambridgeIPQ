@@ -13,6 +13,8 @@
 #include <vector>
 
 #include "camera.h"
+#include "color.h"
+#include "mesh.h"
 #include "renderer.h"
 
 struct Ray {
@@ -26,12 +28,29 @@ struct Ray {
   };
 };
 
-void traceRay() {}
+bool rayTriangleIntersect() { return false; }
+
+color traceRay() {
+  bool intersect = false;
+  std::vector<mesh> scene2;
+  for (int i = 0; i < scene2.size(); i++) {
+    const int triangleCount = scene2[i].indices.size() / 3;
+    for (int j = 0; j < triangleCount; i++) {
+      if (rayTriangleIntersect()) {
+        return color::base::white;
+      } else {
+        return color::base::black;
+      }
+    }
+  };
+  return color::base::black;
+}
 
 void traceRays() {
+  color frameBuffer[getScreenResolution().x][getScreenResolution().y];
   for (int i = 0; i < getScreenResolution().x; i++) {
     for (int j = 0; j < getScreenResolution().y; j++) {
-      traceRay();
+      frameBuffer[i][j] = traceRay();
     }
   }
 }

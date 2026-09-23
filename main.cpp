@@ -4,6 +4,7 @@
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
 #include <algorithm>
+#include <cstring>
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_int2.hpp>
@@ -16,6 +17,7 @@
 
 #include "camera.h"
 #include "color.h"
+#include "mesh.h"
 #include "rasterizer.h"
 #include <cstdlib>
 #include <vector>
@@ -49,78 +51,95 @@ void initSDL() {
   //   raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
   // }
 }
+float radius;
+glm::vec3 pos;
+glm::vec3 vertices[8];
+int indices[36];
+color colors[36];
 
-float radius = 1.0f;
-glm::vec3 pos = glm::vec3(0.0f, 0.0f, 4.0f);
-glm::vec3 vertices3d[8] = {glm::vec3(-radius, radius, radius) + pos,
-                           glm::vec3(radius, radius, radius) + pos,
-                           glm::vec3(-radius, radius, -radius) + pos,
-                           glm::vec3(radius, radius, -radius) + pos,
-                           glm::vec3(-radius, -radius, radius) + pos,
-                           glm::vec3(radius, -radius, radius) + pos,
-                           glm::vec3(-radius, -radius, -radius) + pos,
-                           glm::vec3(radius, -radius, -radius) + pos};
-int indices[36] = { // top face
-    0, 1, 2, 1, 3, 2,
-    // bottom face
-    6, 5, 4, 6, 7, 5,
-    // front face
-    0, 5, 1, 0, 4, 5,
-    // back face
-    2, 3, 6, 3, 7, 6,
-    // left face
-    0, 2, 4, 2, 6, 4,
-    // right face
-    1, 5, 3, 3, 5, 7};
-color::base colors[36] = {
-    // top face
-    color::base::red,
-    color::base::red,
-    color::base::red,
-    color::base::red,
-    color::base::red,
-    color::base::red,
-    // bottom face
-    color::base::green,
-    color::base::green,
-    color::base::green,
-    color::base::green,
-    color::base::green,
-    color::base::green,
-    // front face
-    color::base::blue,
-    color::base::blue,
-    color::base::blue,
-    color::base::blue,
-    color::base::blue,
-    color::base::blue,
-    // back face
-    color::base::yellow,
-    color::base::yellow,
-    color::base::yellow,
-    color::base::yellow,
-    color::base::yellow,
-    color::base::yellow,
-    // left face
-    color::base::cyan,
-    color::base::cyan,
-    color::base::cyan,
-    color::base::cyan,
-    color::base::cyan,
-    color::base::cyan,
-    // right face
-    color::base::magenta,
-    color::base::magenta,
-    color::base::magenta,
-    color::base::magenta,
-    color::base::magenta,
-    color::base::magenta,
-};
+mesh prepareCubeMesh(glm::vec3 pos) {
+  radius = 1.0f;
+  glm::vec3 tempv[8] = {glm::vec3(-radius, radius, radius) + pos,
+                        glm::vec3(radius, radius, radius) + pos,
+                        glm::vec3(-radius, radius, -radius) + pos,
+                        glm::vec3(radius, radius, -radius) + pos,
+                        glm::vec3(-radius, -radius, radius) + pos,
+                        glm::vec3(radius, -radius, radius) + pos,
+                        glm::vec3(-radius, -radius, -radius) + pos,
+                        glm::vec3(radius, -radius, -radius) + pos};
+  memcpy(vertices, tempv, sizeof(vertices));
+  int tempi[36] = {// top face
+                   0, 1, 2, 1, 3, 2,
+                   // bottom face
+                   6, 5, 4, 6, 7, 5,
+                   // front face
+                   0, 5, 1, 0, 4, 5,
+                   // back face
+                   2, 3, 6, 3, 7, 6,
+                   // left face
+                   0, 2, 4, 2, 6, 4,
+                   // right face
+                   1, 5, 3, 3, 5, 7};
+  memcpy(indices, tempi, sizeof(indices));
+  color tempc[36] = {
+      // top face
+      color::base::red,
+      color::base::red,
+      color::base::red,
+      color::base::red,
+      color::base::red,
+      color::base::red,
+      // bottom face
+      color::base::green,
+      color::base::green,
+      color::base::green,
+      color::base::green,
+      color::base::green,
+      color::base::green,
+      // front face
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      // back face
+      color::base::yellow,
+      color::base::yellow,
+      color::base::yellow,
+      color::base::yellow,
+      color::base::yellow,
+      color::base::yellow,
+      // left face
+      color::base::cyan,
+      color::base::cyan,
+      color::base::cyan,
+      color::base::cyan,
+      color::base::cyan,
+      color::base::cyan,
+      // right face
+      color::base::magenta,
+      color::base::magenta,
+      color::base::magenta,
+      color::base::magenta,
+      color::base::magenta,
+      color::base::magenta,
+  };
+  memcpy(colors, tempc, sizeof(colors));
+  std::vector<glm::vec3> vecVertices3d(std::begin(vertices),
+                                       std::end(vertices));
+  std::vector<int> vecIndices(std::begin(indices), std::end(indices));
+  std::vector<color> vecColors(std::begin(colors), std::end(colors));
+  return mesh(vecVertices3d, std::vector<glm::vec3>(), vecColors, vecIndices,
+              material::base::redFill);
+}
+
 // Code that execute every frames
 void loopSDL() {
   clear();
 
   computeRotationMatrixes();
+  clearZBuffer();
   // glm::vec3 vertices3d[12][3] = {
   //     {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 3.0f),
   //      glm::vec3(1.0f, 1.0f, 5.0f)},
@@ -135,13 +154,11 @@ void loopSDL() {
   // raster3DTriangle(vertices3d[1], 200, 0, 0);
   // raster3DTriangle(vertices3d[2], 0, 255, 0);
   // raster3DTriangle(vertices3d[3], 0, 200, 0);
-  std::vector<glm::vec3> vecVertices3d(std::begin(vertices3d),
-                                       std::end(vertices3d));
-  std::vector<int> vecIndices(std::begin(indices), std::end(indices));
-  std::vector<color> vecColors(std::begin(colors), std::end(colors));
-  mesh m = mesh(vecVertices3d, std::vector<glm::vec3>(), vecColors, vecIndices);
+
   auto start = std::chrono::steady_clock::now();
-  raster3DMesh(m);
+  // raster3Dcoord();
+  raster3DMesh(prepareCubeMesh(glm::vec3(0.0f, 0.0f, 4.0f)));
+  raster3DMesh(prepareCubeMesh(glm::vec3(0.0f, 0.0f, 8.0f)));
   auto end = std::chrono::steady_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);

@@ -16,6 +16,7 @@ void raster2DTriangle(glm::ivec2 vertices[], color c);
 void raster3DTriangle(glm::vec3 vertices[], color c);
 void raster3DMesh(mesh m);
 
+void clearZBuffer();
 void computeRotationMatrixes();
 
 void rasterPoint(glm::vec3 vertices);
