@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstddef>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_float3x3.hpp>
@@ -17,29 +18,44 @@
 #include "mesh.h"
 #include "renderer.h"
 
+using namespace glm;
+
 struct Ray {
-  glm::vec3 position;
-  glm::vec3 direction;
+  vec3 position;
+  vec3 direction;
   std::uint8_t depth;
-  Ray(glm::vec3 _position, glm::vec3 _direction, int _depth) {
-    position = _position;
-    direction = _direction;
-    depth = _depth;
+  float nearest;
+  Ray(vec3 p, vec3 d, int e) {
+    position = p;
+    direction = d;
+    depth = e;
+    nearest = INFINITY;
   };
 };
 
-bool rayTriangleIntersect() { return false; }
+Ray getCameraRay(vec2) { return Ray(vec3(0, 0, 0), vec3(0, 0, 1), 0); }
 
-color traceRay() {
+bool rayTriangleIntersect(Ray r, vec3 v[]) {
+  // float e1 = v[1] - v[0];
+  // float e2 = v[2] - v[0];
+}
+
+color traceRay(Ray r) {
   bool intersect = false;
+  int objectIndex;
+  int triangleIndex;
   std::vector<mesh> scene2;
+  vec3 vertices[3];
+  mesh *m;
   for (int i = 0; i < scene2.size(); i++) {
     const int triangleCount = scene2[i].indices.size() / 3;
     for (int j = 0; j < triangleCount; i++) {
-      if (rayTriangleIntersect()) {
+      m = &scene2[i];
+      vertices[0] = scene2[i].getVertices()[scene2[i].getIndices()[3 * j]];
+      vertices[1] = scene2[i].getVertices()[scene2[i].getIndices()[3 * j + 1]];
+      vertices[2] = scene2[i].getVertices()[scene2[i].getIndices()[3 * j + 2]];
+      if (rayTriangleIntersect(r, vertices)) {
         return color::base::white;
-      } else {
-        return color::base::black;
       }
     }
   };
@@ -50,7 +66,8 @@ void traceRays() {
   color frameBuffer[getScreenResolution().x][getScreenResolution().y];
   for (int i = 0; i < getScreenResolution().x; i++) {
     for (int j = 0; j < getScreenResolution().y; j++) {
-      frameBuffer[i][j] = traceRay();
+      Ray r = getCameraRay(vec2(i, j));
+      frameBuffer[i][j] = traceRay(r);
     }
   }
 }

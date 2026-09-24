@@ -7,16 +7,18 @@
 #include "mesh.h"
 #include "renderer.h"
 
-void raster2DLine(glm::ivec2 v1, glm::ivec2 v2);
-void raster3DLine(glm::vec3 v1, glm::vec3 v2);
+using namespace glm;
+
+void raster2DLine(ivec2 v1, ivec2 v2);
+void raster3DLine(vec3 v1, vec3 v2);
 
 void raster3Dcoord();
 
-void raster2DTriangle(glm::ivec2 vertices[], color c);
-void raster3DTriangle(glm::vec3 vertices[], color c);
+void raster2DTriangle(ivec2 vertices[], color c);
+void raster3DTriangle(vec3 vertices[], color c);
 void raster3DMesh(mesh m);
 
 void clearZBuffer();
 void computeRotationMatrixes();
 
-void rasterPoint(glm::vec3 vertices);
+void rasterPoint(vec3 vertices);

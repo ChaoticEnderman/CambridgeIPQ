@@ -7,19 +7,21 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+using namespace glm;
+
 // struct mesh {
-//   std::vector<glm::vec3> vertices;
-//   std::vector<glm::vec3> normals;
+//   std::vector<vec3> vertices;
+//   std::vector<vec3> normals;
 //   std::vector<int> indices;
 
-//   mesh(std::vector<glm::vec3> v, std::vector<glm::vec3> n, std::vector<int>
+//   mesh(std::vector<vec3> v, std::vector<vec3> n, std::vector<int>
 //   i) {
 //     vertices = v;
 //     normals = n;
 //     indices = i;
 //   }
-//   std::vector<glm::vec3> getVertices() { return vertices; }
-//   std::vector<glm::vec3> getNormals() { return normals; }
+//   std::vector<vec3> getVertices() { return vertices; }
+//   std::vector<vec3> getNormals() { return normals; }
 //   std::vector<int> getIndices() { return indices; }
 // };
 
@@ -127,12 +129,12 @@ material::material(base material) {
   }
 }
 
-mesh::mesh(std::vector<glm::vec3> v, std::vector<glm::vec3> n,
-           std::vector<color> c, std::vector<int> i, material m)
+mesh::mesh(std::vector<vec3> v, std::vector<vec3> n, std::vector<color> c,
+           std::vector<int> i, material m)
     : vertices(v), normals(n), vertexColors(c), indices(i), mat(m) {}
 
-std::vector<glm::vec3> mesh::getVertices() { return vertices; }
-std::vector<glm::vec3> mesh::getNormals() { return normals; }
+std::vector<vec3> mesh::getVertices() { return vertices; }
+std::vector<vec3> mesh::getNormals() { return normals; }
 std::vector<int> mesh::getIndices() { return indices; }
 
 std::vector<color> mesh::getVertexColors() { return vertexColors; }
@@ -143,3 +145,7 @@ float material::getRoughness() { return roughness; }
 float material::getEmission() { return emission; }
 float material::getTransmission() { return transmission; }
 float material::getIOR() { return ior; }
+
+std::vector<mesh> scene;
+void addMesh(mesh m) { scene.push_back(m); }
+mesh getMesh(int id) { return scene[id]; }

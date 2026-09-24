@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <vector>
 
+using namespace glm;
 constexpr double pi = 3.14159265358979323846;
 
 SDL_Window *window;
@@ -33,40 +34,40 @@ bool running;
 float accFrameDelta = 0.0f;
 int accFrames = 0;
 
-glm::vec3 movement;
-glm::vec3 rotation;
+vec3 movement;
+vec3 rotation;
 
 // Code that execute once
 void initSDL() {
   srand(time(0));
-  // glm::ivec2 vertices[3] = {glm::ivec2(0, 0), glm::ivec2(100, 50),
-  //                           glm::ivec2(50, 200)};
+  // ivec2 vertices[3] = {ivec2(0, 0), ivec2(100, 50),
+  //                           ivec2(50, 200)};
   // for (int i = 0; i < 100; i++) {
-  //   vertices[0] = glm::ivec2(rand() % getScreenResolution().x,
+  //   vertices[0] = ivec2(rand() % getScreenResolution().x,
   //                            rand() % getScreenResolution().y);
-  //   vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
+  //   vertices[1] = ivec2(rand() % getScreenResolution().x,
   //                            rand() % getScreenResolution().y);
-  //   vertices[1] = glm::ivec2(rand() % getScreenResolution().x,
+  //   vertices[1] = ivec2(rand() % getScreenResolution().x,
   //                            rand() % getScreenResolution().y);
   //   raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
   // }
 }
 float radius;
-glm::vec3 pos;
-glm::vec3 vertices[8];
+vec3 pos;
+vec3 vertices[8];
 int indices[36];
 color colors[36];
 
-mesh prepareCubeMesh(glm::vec3 pos) {
+mesh prepareCubeMesh(vec3 pos) {
   radius = 1.0f;
-  glm::vec3 tempv[8] = {glm::vec3(-radius, radius, radius) + pos,
-                        glm::vec3(radius, radius, radius) + pos,
-                        glm::vec3(-radius, radius, -radius) + pos,
-                        glm::vec3(radius, radius, -radius) + pos,
-                        glm::vec3(-radius, -radius, radius) + pos,
-                        glm::vec3(radius, -radius, radius) + pos,
-                        glm::vec3(-radius, -radius, -radius) + pos,
-                        glm::vec3(radius, -radius, -radius) + pos};
+  vec3 tempv[8] = {vec3(-radius, radius, radius) + pos,
+                   vec3(radius, radius, radius) + pos,
+                   vec3(-radius, radius, -radius) + pos,
+                   vec3(radius, radius, -radius) + pos,
+                   vec3(-radius, -radius, radius) + pos,
+                   vec3(radius, -radius, radius) + pos,
+                   vec3(-radius, -radius, -radius) + pos,
+                   vec3(radius, -radius, -radius) + pos};
   memcpy(vertices, tempv, sizeof(vertices));
   int tempi[36] = {// top face
                    0, 1, 2, 1, 3, 2,
@@ -126,12 +127,13 @@ mesh prepareCubeMesh(glm::vec3 pos) {
       color::base::magenta,
   };
   memcpy(colors, tempc, sizeof(colors));
-  std::vector<glm::vec3> vecVertices3d(std::begin(vertices),
-                                       std::end(vertices));
+  std::vector<vec3> vecVertices3d(std::begin(vertices), std::end(vertices));
   std::vector<int> vecIndices(std::begin(indices), std::end(indices));
   std::vector<color> vecColors(std::begin(colors), std::end(colors));
-  return mesh(vecVertices3d, std::vector<glm::vec3>(), vecColors, vecIndices,
-              material::base::redFill);
+  mesh m = mesh(vecVertices3d, std::vector<vec3>(), vecColors, vecIndices,
+                material::base::redFill);
+  addMesh(m);
+  return m;
 }
 
 // Code that execute every frames
@@ -140,15 +142,15 @@ void loopSDL() {
 
   computeRotationMatrixes();
   clearZBuffer();
-  // glm::vec3 vertices3d[12][3] = {
-  //     {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, 1.0f, 3.0f),
-  //      glm::vec3(1.0f, 1.0f, 5.0f)},
-  //     {glm::vec3(1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 5.0f),
-  //      glm::vec3(1.0f, 1.0f, 5.0f)},
-  //     {glm::vec3(-1.0f, 1.0f, 3.0f), glm::vec3(-1.0f, -1.0f, 3.0f),
-  //      glm::vec3(1.0f, 1.0f, 3.0f)},
-  //     {glm::vec3(-1.0f, -1.0f, 3.0f), glm::vec3(1.0f, -1.0f, 3.0f),
-  //      glm::vec3(1.0f, 1.0f, 3.0f)},
+  // vec3 vertices3d[12][3] = {
+  //     {vec3(1.0f, -1.0f, 3.0f), vec3(1.0f, 1.0f, 3.0f),
+  //      vec3(1.0f, 1.0f, 5.0f)},
+  //     {vec3(1.0f, -1.0f, 3.0f), vec3(1.0f, -1.0f, 5.0f),
+  //      vec3(1.0f, 1.0f, 5.0f)},
+  //     {vec3(-1.0f, 1.0f, 3.0f), vec3(-1.0f, -1.0f, 3.0f),
+  //      vec3(1.0f, 1.0f, 3.0f)},
+  //     {vec3(-1.0f, -1.0f, 3.0f), vec3(1.0f, -1.0f, 3.0f),
+  //      vec3(1.0f, 1.0f, 3.0f)},
   // };
   // raster3DTriangle(vertices3d[0], 255, 0, 0);
   // raster3DTriangle(vertices3d[1], 200, 0, 0);
@@ -157,8 +159,8 @@ void loopSDL() {
 
   auto start = std::chrono::steady_clock::now();
   // raster3Dcoord();
-  raster3DMesh(prepareCubeMesh(glm::vec3(0.0f, 0.0f, 4.0f)));
-  raster3DMesh(prepareCubeMesh(glm::vec3(0.0f, 0.0f, 8.0f)));
+  raster3DMesh(prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f)));
+  raster3DMesh(prepareCubeMesh(vec3(0.0f, 0.0f, 8.0f)));
   auto end = std::chrono::steady_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -209,8 +211,8 @@ int init() {
         break;
       }
     }
-    movement = glm::vec3(0.0f, 0.0f, 0.0f);
-    rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+    movement = vec3(0.0f, 0.0f, 0.0f);
+    rotation = vec3(0.0f, 0.0f, 0.0f);
     if (keystate[SDL_SCANCODE_W]) {
       movement.z += 1.0f;
     }
@@ -244,16 +246,15 @@ int init() {
 
     // camera movement
     setCameraRotation(getCameraRotation() + rotation * delta * 5.0f);
-    setCameraRotation(glm::vec3(
-        std::clamp(getCameraRotation().x, (float)-pi / 2, (float)pi / 2),
-        getCameraRotation().y, 0.0f));
+    setCameraRotation(
+        vec3(std::clamp(getCameraRotation().x, (float)-pi / 2, (float)pi / 2),
+             getCameraRotation().y, 0.0f));
     float rotY = -getCameraRotation().y;
-    glm::mat2x2 rotationMatrix =
-        glm::mat2x2(cos(rotY), sin(rotY), -sin(rotY), cos(rotY));
-    glm::vec2 move2 = glm::vec2(movement.x, movement.z);
+    mat2x2 rotationMatrix = mat2x2(cos(rotY), sin(rotY), -sin(rotY), cos(rotY));
+    vec2 move2 = vec2(movement.x, movement.z);
     move2 = rotationMatrix * move2;
     setCameraPosition(getCameraPosition() +
-                      glm::vec3(move2.x, movement.y, move2.y) * delta * 10.0f);
+                      vec3(move2.x, movement.y, move2.y) * delta * 10.0f);
     currentTick = SDL_GetTicks();
 
     // profiling

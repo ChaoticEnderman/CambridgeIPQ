@@ -6,6 +6,8 @@
 #include "camera.h"
 #include "color.h"
 
+using namespace glm;
+
 int r, g, b, a;
 SDL_Renderer *renderer;
 
@@ -24,7 +26,7 @@ void setColor(color color) {
 }
 
 void drawPoint(int x, int y) { SDL_RenderDrawPoint(renderer, x, y); }
-void drawPoints(glm::ivec2 points[], int size) {
+void drawPoints(ivec2 points[], int size) {
   SDL_Point p[size];
   for (int i = 0; i < size; i++) {
     p[i] = {points[i].x, points[i].y};

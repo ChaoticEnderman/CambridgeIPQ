@@ -1,12 +1,13 @@
 #include <glm/glm.hpp>
+using namespace glm;
 
-glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-glm::vec3 cameraRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+vec3 cameraPosition = vec3(0.0f, 0.0f, 0.0f);
+vec3 cameraRotation = vec3(0.0f, 0.0f, 0.0f);
 
-glm::ivec2 getScreenResolution() { return glm::ivec2(640, 640); }
+ivec2 getScreenResolution() { return ivec2(640, 360); }
 
-void setCameraPosition(glm::vec3 pos) { cameraPosition = pos; }
-glm::vec3 getCameraPosition() { return cameraPosition; }
+void setCameraPosition(vec3 pos) { cameraPosition = pos; }
+vec3 getCameraPosition() { return cameraPosition; }
 
-void setCameraRotation(glm::vec3 pos) { cameraRotation = pos; }
-glm::vec3 getCameraRotation() { return cameraRotation; }
+void setCameraRotation(vec3 pos) { cameraRotation = pos; }
+vec3 getCameraRotation() { return cameraRotation; }

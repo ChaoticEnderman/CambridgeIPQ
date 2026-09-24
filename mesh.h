@@ -6,6 +6,8 @@
 
 #include "color.h"
 
+using namespace glm;
+
 struct material {
   color albedo;
   bool metallic;
@@ -40,20 +42,18 @@ struct material {
 };
 
 struct mesh {
-  std::vector<glm::vec3> vertices;
-  std::vector<glm::vec3> normals;
+  std::vector<vec3> vertices;
+  std::vector<vec3> normals;
   std::vector<color> vertexColors;
   std::vector<int> indices;
   material mat;
 
-  mesh(std::vector<glm::vec3> v, std::vector<glm::vec3> n, std::vector<color> c,
+  mesh(std::vector<vec3> v, std::vector<vec3> n, std::vector<color> c,
        std::vector<int> i, material m);
-  std::vector<glm::vec3> getVertices();
-  std::vector<glm::vec3> getNormals();
+  std::vector<vec3> getVertices();
+  std::vector<vec3> getNormals();
   std::vector<color> getVertexColors();
   std::vector<int> getIndices();
 };
-
-// std::vector<mesh> scene;
-// static void addmesh(mesh m) { scene.push_back(m); }
-// static mesh getMesh(int id) { return scene[id]; }
+void addMesh(mesh m);
+mesh getMesh(int id);
