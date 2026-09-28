@@ -57,3 +57,4 @@ struct mesh {
 };
 void addMesh(mesh m);
 mesh getMesh(int id);
+int getSceneSize();

@@ -2,7 +2,7 @@
 using namespace glm;
 
 vec3 cameraPosition = vec3(0.0f, 0.0f, 0.0f);
-vec3 cameraRotation = vec3(0.0f, 0.0f, 0.0f);
+vec3 cameraRotation = vec3(-0.5f, 0.0f, 0.0f);
 
 ivec2 getScreenResolution() { return ivec2(640, 360); }
 

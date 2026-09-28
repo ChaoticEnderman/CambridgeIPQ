@@ -12,15 +12,16 @@
 #include <stdlib.h>
 
 #include <chrono>
+#include <cstdlib>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <vector>
 
 #include "camera.h"
 #include "color.h"
 #include "mesh.h"
 #include "rasterizer.h"
-#include <cstdlib>
-#include <vector>
+#include "raytracer.h"
 
 using namespace glm;
 constexpr double pi = 3.14159265358979323846;
@@ -141,6 +142,7 @@ void loopSDL() {
   clear();
 
   computeRotationMatrixes();
+  computeCameraMatrixes();
   clearZBuffer();
   // vec3 vertices3d[12][3] = {
   //     {vec3(1.0f, -1.0f, 3.0f), vec3(1.0f, 1.0f, 3.0f),
@@ -157,15 +159,17 @@ void loopSDL() {
   // raster3DTriangle(vertices3d[2], 0, 255, 0);
   // raster3DTriangle(vertices3d[3], 0, 200, 0);
 
-  auto start = std::chrono::steady_clock::now();
+  std::chrono::time_point start = std::chrono::steady_clock::now();
   // raster3Dcoord();
-  raster3DMesh(prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f)));
-  raster3DMesh(prepareCubeMesh(vec3(0.0f, 0.0f, 8.0f)));
-  auto end = std::chrono::steady_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-  std::cout << "Elapsed: " << duration.count() << " us\n";
+  mesh m1 = prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f));
+  mesh m2 = prepareCubeMesh(vec3(0.0f, 0.0f, 8.0f));
+  traceRays();
+  // raster3DMesh(m1);
+  // raster3DMesh(m2);
+  std::chrono::time_point end = std::chrono::steady_clock::now();
+  std::chrono::nanoseconds duration =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+  std::cout << "Frame time: " << duration.count() << " ns\n";
   nextFrame();
 }
 

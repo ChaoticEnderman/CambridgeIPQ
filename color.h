@@ -94,3 +94,5 @@ struct color {
            std::to_string(b) + " " + std::to_string(a) + ")";
   }
 };
+
+bool colorEquals(color a, color b);

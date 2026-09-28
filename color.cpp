@@ -81,3 +81,7 @@ struct color {
     }
   }
 };
+
+bool colorEquals(color A, color B) {
+  return A.r == B.r && A.g == B.g && A.b == B.b && A.a == B.a;
+}

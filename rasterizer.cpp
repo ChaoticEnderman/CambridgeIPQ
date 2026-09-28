@@ -162,7 +162,6 @@ void raster2DTriangle(ivec2 vertices[], color c,
   // }
 
   drawPoints(points, size);
-  // std::cout << "Elapsed: " << duration.count() << " us\n";
 }
 
 mat2x2 aspect = mat2x2(0.5625, 0, 0, 1);

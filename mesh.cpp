@@ -149,3 +149,4 @@ float material::getIOR() { return ior; }
 std::vector<mesh> scene;
 void addMesh(mesh m) { scene.push_back(m); }
 mesh getMesh(int id) { return scene[id]; }
+int getSceneSize() { return scene.size(); }
