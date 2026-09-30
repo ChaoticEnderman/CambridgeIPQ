@@ -22,6 +22,7 @@
 #include "mesh.h"
 #include "rasterizer.h"
 #include "raytracer.h"
+#include "renderer.h"
 
 using namespace glm;
 constexpr double pi = 3.14159265358979323846;
@@ -38,21 +39,6 @@ int accFrames = 0;
 vec3 movement;
 vec3 rotation;
 
-// Code that execute once
-void initSDL() {
-  srand(time(0));
-  // ivec2 vertices[3] = {ivec2(0, 0), ivec2(100, 50),
-  //                           ivec2(50, 200)};
-  // for (int i = 0; i < 100; i++) {
-  //   vertices[0] = ivec2(rand() % getScreenResolution().x,
-  //                            rand() % getScreenResolution().y);
-  //   vertices[1] = ivec2(rand() % getScreenResolution().x,
-  //                            rand() % getScreenResolution().y);
-  //   vertices[1] = ivec2(rand() % getScreenResolution().x,
-  //                            rand() % getScreenResolution().y);
-  //   raster2DTriangle(vertices, rand() % 255, rand() % 255, rand() % 255);
-  // }
-}
 float radius;
 vec3 pos;
 vec3 vertices[8];
@@ -137,6 +123,15 @@ mesh prepareCubeMesh(vec3 pos) {
   return m;
 }
 
+// Code that execute once
+void initSDL() {
+  srand(time(0));
+  setDefaultTexture();
+  mesh m1 = prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f));
+  mesh m2 = prepareCubeMesh(vec3(0.0f, 0.0f, 8.0f));
+  // traceRays();
+}
+
 // Code that execute every frames
 void loopSDL() {
   clear();
@@ -160,16 +155,15 @@ void loopSDL() {
   // raster3DTriangle(vertices3d[3], 0, 200, 0);
 
   std::chrono::time_point start = std::chrono::steady_clock::now();
-  // raster3Dcoord();
-  mesh m1 = prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f));
-  mesh m2 = prepareCubeMesh(vec3(0.0f, 0.0f, 8.0f));
   traceRays();
-  // raster3DMesh(m1);
-  // raster3DMesh(m2);
+  //  raster3Dcoord();
+  // raster3DMesh(getMesh(0));
+  // raster3DMesh(getMesh(1));
   std::chrono::time_point end = std::chrono::steady_clock::now();
   std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
   std::cout << "Frame time: " << duration.count() << " ns\n";
+  updateTexture();
   nextFrame();
 }
 
@@ -278,7 +272,6 @@ int init() {
       accFrames = 0;
     }
 
-    // SDL_Delay(16);
     previousTick = currentTick;
   }
 

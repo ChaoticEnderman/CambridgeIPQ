@@ -82,6 +82,19 @@ struct color {
   }
 };
 
+color barycentricInterpolation(color A, color B, color C, float u, float v,
+                               float w) {
+  return color(
+      (A.r * u + B.r * v + C.r * w) / 3, (A.g * u + B.g * v + C.g * w) / 3,
+      (A.b * u + B.b * v + C.b * w) / 3, (A.a * u + B.a * v + C.a * w) / 3);
+}
+
 bool colorEquals(color A, color B) {
   return A.r == B.r && A.g == B.g && A.b == B.b && A.a == B.a;
+}
+
+uint32_t toUint32ARGB(color a) {
+  return (static_cast<uint32_t>(a.a) << 24) |
+         (static_cast<uint32_t>(a.r) << 16) |
+         (static_cast<uint32_t>(a.g) << 8) | (static_cast<uint32_t>(a.b) << 0);
 }

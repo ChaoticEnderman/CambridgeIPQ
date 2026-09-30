@@ -1,13 +1,20 @@
 #pragma once
+#include "camera.h"
 #include "color.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
+#include <chrono>
 #include <glm/glm.hpp>
 
 using namespace glm;
 
+extern uint32_t fragment[getScreenResolutionX() * getScreenResolutionY()];
+
 void setRenderer(SDL_Renderer *r);
 SDL_Renderer *getRenderer();
+
+void setDefaultTexture();
+void updateTexture();
 
 void nextFrame();
 void clear();

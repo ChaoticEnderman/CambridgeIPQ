@@ -1,3 +1,4 @@
+#include <SDL2/SDL_render.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -24,8 +25,6 @@
 
 using namespace glm;
 
-color frameBuffer[getScreenResolutionX()][getScreenResolutionY()];
-ivec2 pointBuffer[getScreenResolutionX() * getScreenResolutionY()];
 int pointIndex;
 
 mat3x3 cameraMatRT;
@@ -66,7 +65,9 @@ Ray getCameraRay(vec2 point) {
   vec3 dir = vec3(point.x / getScreenResolutionX() * 2.0f - 1.0f,
                   point.y / getScreenResolutionX() * 2.0f - 1.0f, 1.0f);
   dir = normalize(dir);
-  return Ray(getCameraPosition(), cameraMatRT * dir, 0);
+  dir = cameraMatRT * dir;
+  Ray ray = Ray(getCameraPosition(), dir, 0);
+  return ray;
 }
 
 bool rayTriangleIntersect(Ray r, vec3 vert[], float *t, float *u, float *v,
@@ -108,7 +109,11 @@ bool rayTriangleIntersect(Ray r, vec3 vert[], float *t, float *u, float *v,
   return true;
 }
 
-color traceRay(Ray r) {
+int totalNS = 0;
+int maxNS = 0;
+ivec2 maxNSid = ivec2(0, 0);
+
+color traceRay(Ray r, int i, int j) {
   std::chrono::time_point start = std::chrono::steady_clock::now();
 
   bool intersect = false;
@@ -118,27 +123,34 @@ color traceRay(Ray r) {
   // keep a copy for efficient memory
   std::vector<vec3> vertices;
   std::vector<int> indices;
+  std::vector<color> colors;
   vec3 vert[3];
+  color col = color::base::black;
   int triangleCount;
   for (int i = 0; i < getSceneSize(); i++) {
     triangleCount = getMesh(i).indices.size() / 3;
+    m = getMesh(i);
+    vertices = m.getVertices();
+    indices = m.getIndices();
+    colors = m.getVertexColors();
     for (int j = 0; j < triangleCount; j++) {
-      m = getMesh(i);
-      vertices = m.getVertices();
-      indices = m.getIndices();
       vert[0] = vertices[indices[3 * j]];
       vert[1] = vertices[indices[3 * j + 1]];
       vert[2] = vertices[indices[3 * j + 2]];
       float t, u, v, w;
       bool res = rayTriangleIntersect(r, vert, &t, &u, &v, &w);
       if (res) {
-        /*std::cout << "intersect " << r.toString() << " " //
-                  << vert[0].x << " " << vert[0].y << " " << vert[0].z << " "
-                  << vert[1].x << " " << vert[1].y << " " << vert[1].z << " "
-                  << vert[2].x << " " << vert[2].y << " " << vert[2].z << " "
-                  << std::endl;
-        intersect = true;*/
-        return color::base::white;
+        // std::cout << "intersect " << r.toString() << " " //
+        //           << vert[0].x << " " << vert[0].y << " " << vert[0].z << " "
+        //           << vert[1].x << " " << vert[1].y << " " << vert[1].z << " "
+        //           << vert[2].x << " " << vert[2].y << " " << vert[2].z << " "
+        //           << std::endl;
+        // intersect = true;
+        col = barycentricInterpolation(colors[3 * j], colors[3 * j + 1],
+                                       colors[3 * j + 2], u, v, w);
+        // std::cout << "bary " << col.toString() << colors[3 * j].toString()
+        //           << colors[3 * j + 1].toString()
+        //           << colors[3 * j + 2].toString() << std::endl;
       }
     }
   };
@@ -146,23 +158,28 @@ color traceRay(Ray r) {
   std::chrono::time_point end = std::chrono::steady_clock::now();
   std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-  std::cout << "Ray time: " << duration.count() << " ns\n";
+  totalNS += duration.count();
+  if (maxNS < duration.count()) {
+    maxNS = duration.count();
+    maxNSid = ivec2(i, j);
+  }
 
-  return color::base::black;
+  return col;
 }
 
 void traceRays() {
-  setColor(color::base::white);
-  pointIndex = 0;
+  totalNS = 0;
+  maxNS = 0;
   for (int i = 0; i < getScreenResolutionX(); i++) {
     for (int j = 0; j < getScreenResolutionY(); j++) {
       Ray r = getCameraRay(vec2(i, j));
-      frameBuffer[i][j] = traceRay(r);
-      if (colorEquals(frameBuffer[i][j], color::base::white)) {
-        pointBuffer[pointIndex] = ivec2(i, -j);
-        pointIndex++;
-      }
+      fragment[(getScreenResolutionY() - j) * getScreenResolutionX() + i] =
+          toUint32ARGB(traceRay(r, i, j));
     }
   }
-  drawPoints(pointBuffer, pointIndex);
+  std::cout << "average ray time " << totalNS << " "
+            << totalNS / getScreenResolutionX() / getScreenResolutionY()
+            << " coords " << maxNSid.x << " " << maxNSid.y << " points "
+            << pointIndex << std::endl;
+  std::cout << "max ray time " << maxNS << std::endl;
 }
