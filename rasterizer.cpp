@@ -18,8 +18,13 @@
 #include "mesh.h"
 #include "renderer.h"
 
+// This class is used for testing purposes only
+// However some concepts like barycentric coordinates will be useful on other
+// parts I made this primarily for learning a part of rendering pipelines
+
 using namespace glm;
 
+// distance between camera origin and
 float camLen = 0.1f;
 constexpr int resX = getScreenResolutionX();
 constexpr int resY = getScreenResolutionY();
@@ -212,7 +217,7 @@ void raster3DMesh(mesh m) {
     vertices3d[0] = m.getVertices()[m.getIndices()[3 * i]];
     vertices3d[1] = m.getVertices()[m.getIndices()[3 * i + 1]];
     vertices3d[2] = m.getVertices()[m.getIndices()[3 * i + 2]];
-    raster3DTriangle(vertices3d, m.getVertexColors()[3 * i]);
+    raster3DTriangle(vertices3d, m.getVertexColors()[m.getIndices()[3 * i]]);
   }
 }
 
@@ -237,8 +242,4 @@ void clearZBuffer() {
       zBuffer[i][j] = 1000;
     }
   }
-}
-
-void rasterPoint(vec3 vertices) {
-  // vec3 translation = getCameraPosition() - vertices;
 }

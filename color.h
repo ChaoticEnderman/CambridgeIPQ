@@ -1,6 +1,12 @@
 #pragma once
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/glm.hpp>
 #include <string>
+
+const float VEC3CONV = 1.0f / 256.0f;
 
 struct color {
   uint8_t r, g, b, a;
@@ -93,6 +99,14 @@ struct color {
     return "(" + std::to_string(r) + " " + std::to_string(g) + " " +
            std::to_string(b) + " " + std::to_string(a) + ")";
   }
+  color scaleColor(float f) {
+    return color((uint8_t)(std::clamp(std::round(r * f), 0.0f, 255.0f)),
+                 (uint8_t)(std::clamp(std::round(g * f), 0.0f, 255.0f)),
+                 (uint8_t)(std::clamp(std::round(b * f), 0.0f, 255.0f)), a);
+  }
+  glm::vec3 toVec3() {
+    return glm::vec3(r * VEC3CONV, g * VEC3CONV, b * VEC3CONV);
+  }
 };
 
 bool colorEquals(color a, color b);
@@ -104,7 +118,6 @@ inline color barycentricInterpolation(color A, color B, color C, float u,
 }
 
 inline uint32_t toUint32ARGB(color a) {
-  return (static_cast<uint32_t>(a.a) << 24) |
-         (static_cast<uint32_t>(a.r) << 16) |
-         (static_cast<uint32_t>(a.g) << 8) | (static_cast<uint32_t>(a.b) << 0);
+  return (uint32_t)(a.a) << 24 | (uint32_t)(a.r) << 16 | (uint32_t)(a.g) << 8 |
+         (uint32_t)(a.b) << 0;
 }

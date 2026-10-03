@@ -101,6 +101,10 @@ bool rayTriangleIntersect(Ray r, vec3 vert[], float *t, float *u, float *v,
   }
   // normalize
   float inverseDet = 1.0 / det;
+  if (*t < dot(e2, qvec) * inverseDet) {
+    // the ray hit another point that is closer to this point
+    return false;
+  }
   *t = dot(e2, qvec) * inverseDet;
   *u *= inverseDet;
   *v *= inverseDet;
@@ -127,6 +131,7 @@ color traceRay(Ray r, int i, int j) {
   vec3 vert[3];
   color col = color::base::black;
   int triangleCount;
+  float t = INFINITY, u, v, w;
   for (int i = 0; i < getSceneSize(); i++) {
     triangleCount = getMesh(i).indices.size() / 3;
     m = getMesh(i);
@@ -137,9 +142,7 @@ color traceRay(Ray r, int i, int j) {
       vert[0] = vertices[indices[3 * j]];
       vert[1] = vertices[indices[3 * j + 1]];
       vert[2] = vertices[indices[3 * j + 2]];
-      float t, u, v, w;
-      bool res = rayTriangleIntersect(r, vert, &t, &u, &v, &w);
-      if (res) {
+      if (rayTriangleIntersect(r, vert, &t, &u, &v, &w)) {
         // std::cout << "intersect " << r.toString() << " " //
         //           << vert[0].x << " " << vert[0].y << " " << vert[0].z << " "
         //           << vert[1].x << " " << vert[1].y << " " << vert[1].z << " "
@@ -173,7 +176,7 @@ void traceRays() {
   for (int i = 0; i < getScreenResolutionX(); i++) {
     for (int j = 0; j < getScreenResolutionY(); j++) {
       Ray r = getCameraRay(vec2(i, j));
-      fragment[(getScreenResolutionY() - j) * getScreenResolutionX() + i] =
+      fragment[(getScreenResolutionY() - j - 1) * getScreenResolutionX() + i] =
           toUint32ARGB(traceRay(r, i, j));
     }
   }

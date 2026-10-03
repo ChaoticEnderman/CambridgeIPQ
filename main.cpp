@@ -60,9 +60,9 @@ mesh prepareCubeMesh(vec3 pos) {
                    0, 1, 2, 1, 3, 2,
                    // bottom face
                    6, 5, 4, 6, 7, 5,
-                   // front face
-                   0, 5, 1, 0, 4, 5,
                    // back face
+                   0, 5, 1, 0, 4, 5,
+                   // front face
                    2, 3, 6, 3, 7, 6,
                    // left face
                    0, 2, 4, 2, 6, 4,
@@ -84,14 +84,14 @@ mesh prepareCubeMesh(vec3 pos) {
       color::base::green,
       color::base::green,
       color::base::green,
-      // front face
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
       // back face
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      color::base::blue,
+      // front face
       color::base::yellow,
       color::base::yellow,
       color::base::yellow,
@@ -156,9 +156,9 @@ void loopSDL() {
 
   std::chrono::time_point start = std::chrono::steady_clock::now();
   traceRays();
-  //  raster3Dcoord();
-  // raster3DMesh(getMesh(0));
-  // raster3DMesh(getMesh(1));
+  // raster3Dcoord();
+  //  raster3DMesh(getMesh(0));
+  //  raster3DMesh(getMesh(1));
   std::chrono::time_point end = std::chrono::steady_clock::now();
   std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
