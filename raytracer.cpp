@@ -25,6 +25,8 @@
 
 using namespace glm;
 
+const float epsilon = 0.0001;
+
 int pointIndex;
 
 mat3x3 cameraMatRT;
@@ -75,7 +77,6 @@ bool rayTriangleIntersect(Ray r, vec3 vert[], float *t, float *u, float *v,
   // Möller–Trumbore paper
   // Fast Minimum Storage Ray/Triangle Intersection
   // https://cadxfem.org/inf/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
-  float epsilon = 0.0001;
   vec3 e1 = vert[1] - vert[0];
   vec3 e2 = vert[2] - vert[0];
   // calculating determinant

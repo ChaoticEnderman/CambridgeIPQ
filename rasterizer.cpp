@@ -71,7 +71,7 @@ void raster3Dcoord() {
 // taking optional z depth of each pixels for depth buffer
 void raster2DTriangle(ivec2 vertices[], color c,
                       std::array<float, 3> depth = {0.0f, 0.0f, 0.0f}) {
-  // Find the bounding box of the triangle
+  // Find the bounding box of the triangle and only loop inside this range
   ivec2 topLeft = ivec2(
       std::max({std::min({vertices[0].x, vertices[1].x, vertices[2].x}), 0}),
       std::max({std::min({vertices[0].y, vertices[1].y, vertices[2].y}), 0}));
@@ -81,12 +81,6 @@ void raster2DTriangle(ivec2 vertices[], color c,
             std::min({std::max({vertices[0].y, vertices[1].y, vertices[2].y}),
                       getScreenResolution().x}));
   setColor(c);
-  // raster2DLine(vertices[0], vertices[1]);
-  // raster2DLine(vertices[1], vertices[2]);
-  // raster2DLine(vertices[2], vertices[0]);
-
-  // return;
-  //  Loop through all pixels inside the bounding box
   ivec2 points[getScreenResolution().x * getScreenResolution().y];
   int size = 0;
 
@@ -101,7 +95,10 @@ void raster2DTriangle(ivec2 vertices[], color c,
   // area for calculating barycentric weight in one step
   float area = cross2D(vertices[1] - vertices[0], vertices[2] - vertices[0]);
 
-  // weights of each parts unnormalized
+  // since multiplication with one incremental value on one side is incremental,
+  // this can be optimized for incrementalness by calculating deltas
+  // delta of how much is added each horizontal/vertical step and add instead of
+  // multiply in the hot loops
   float startLambdaA = cross2D(bc, bp) / area;
   float startLambdaB = cross2D(ca, cp) / area;
   float startLambdaC = cross2D(ab, ap) / area;
@@ -120,9 +117,7 @@ void raster2DTriangle(ivec2 vertices[], color c,
                        (startLambdaB + deltaLambdaBy) * depth[1] +
                        (startLambdaC + deltaLambdaCy) * depth[2] - startZDepth;
 
-  std::chrono::time_point start = std::chrono::steady_clock::now();
-  std::chrono::time_point end = std::chrono::steady_clock::now();
-
+  //  Loop through all pixels inside the bounding box
   for (int i = topLeft.x; i < bottomRight.x; i++) {
     float innerLambdaA = startLambdaA, innerLambdaB = startLambdaB,
           innerLambdaC = startLambdaC;
@@ -146,10 +141,8 @@ void raster2DTriangle(ivec2 vertices[], color c,
     startLambdaC += deltaLambdaCx;
     startZDepth += deltaZDepthx;
   }
-  end = std::chrono::steady_clock::now();
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  // std::cout << "loop elapsed: " << duration.count() << " us\n";
+
+  // old variant with multiplication instead of incremental
 
   // ivec2 p = ivec2(0, 0);
   // for (int i = topLeft.x; i < bottomRight.x; i++) {
