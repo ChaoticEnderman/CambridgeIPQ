@@ -6,10 +6,12 @@
 #include <cstddef>
 #include <glm/common.hpp>
 #include <glm/ext/matrix_float3x3.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_int2.hpp>
 #include <glm/geometric.hpp>
 #include <iterator>
+#include <ostream>
 #include <stdlib.h>
 
 #include <glm/glm.hpp>
@@ -67,6 +69,7 @@ struct vertex {
   bool entry;
   vertex *neighbor;
   float alpha;
+  bool processed; // a new flag introduced for ease to check processed polygons
   void insert(vertex *s1, vertex *s2, vertex *data) {
     vertex *c = s1->next;
     while (c != s2 && c->alpha < data->alpha) {
@@ -81,7 +84,7 @@ struct vertex {
     c->prev = data;
   }
 
-  vertex(vec2 c, float alpha = 0.0f, bool i = false, vertex *n = nullptr,
+  vertex(vec2 c, float a = 0.0f, bool i = false, vertex *n = nullptr,
          vertex *p = nullptr, vertex *np = nullptr, vertex *nb = nullptr) {
     coords = c;
     next = n;
@@ -90,15 +93,60 @@ struct vertex {
     intersect = i;
     entry = false;
     neighbor = nb;
-    alpha = 0.0f;
+    alpha = a;
+    processed = false;
   }
 
   std::string toString() {
     // for testing purposes only
     return "[(" + std::to_string(coords.x) + ", " + std::to_string(coords.y) +
-           ") " + "]";
+           ") intersect " + (intersect ? "true" : "false") + " entry " +
+           (entry ? "true" : "false") + " alpha " + std::to_string(alpha) + "]";
   }
 };
+
+struct BRay {
+  vec3 origin;
+  vec3 direction;
+  BRay(vec3 o, vec3 d) {
+    origin = o;
+    direction = d;
+  };
+  std::string toString() {
+    return std::to_string((origin.x)) + " " + std::to_string((origin.y)) + " " +
+           std::to_string((origin.z)) + " " + std::to_string((direction.x)) +
+           " " + std::to_string((direction.y)) + " " +
+           std::to_string((direction.z));
+  };
+};
+
+bool linePlaneIntersection(BRay line, vec3 point, vec3 normal,
+                           vec3 *intersection) {
+  // return the point where a line and a plane intersect
+  // false if the plane is in the back of line direction
+  // n*(P_o - P) = 0
+  // n*P = n*P_o
+  // P = O + tD
+  // n*(O + tD) = n*P_o
+  // n*O + t*n*D = n*P_o
+  // t = (n*P_o - n*O) / n*D
+  if (dot(normal, line.direction) < 0.0000f) {
+    return false; // parallel to the plane
+  }
+  float t = (dot(normal, point) - dot(normal, line.origin)) /
+            dot(normal, line.direction);
+  *intersection = line.origin + t * line.direction;
+  return t >= 0;
+}
+
+vec2 vector3To2(vec3 u, vec3 v, vec3 origin, vec3 point) {
+  vec3 d = point - origin;
+  return vec2(dot(u, d), dot(v, d));
+}
+
+vec3 vector2To3(vec3 u, vec3 v, vec3 origin, vec2 point) {
+  return origin + u * point.x + v * point.y;
+}
 
 // helper functionalities to build a linked list polygon from normal array of
 // vertices
@@ -123,21 +171,16 @@ bool pointInPolygon(vertex *p, vec2 point) {
   int count = 0;
   do {
     // one point is on the ray and one point is under it
-    std::cout << "Polygon checking " << p->toString();
     if ((p->coords.y > point.y) != (n->coords.y > point.y)) {
       float ratio = (p->coords.y - point.y) / (p->coords.y - n->coords.y);
       if (ratio * (n->coords.x - p->coords.x) + p->coords.x > point.x) {
         count += 1;
-        std::cout << "+1";
       } else {
-        std::cout << "+0";
       }
     } else {
-      std::cout << "+0";
     }
     p = n;
     n = n->next;
-    std::cout << std::endl;
   } while (p != first);
   return count % 2;
 }
@@ -182,7 +225,9 @@ void GHphase2(vertex *subject, vertex *clip) {
   // points to either entry or exit
   vertex *subjectFirst = subject;
   vertex *clipFirst = clip;
-  bool entry = pointInPolygon(subject, clip->coords);
+  bool entry = !pointInPolygon(clip, subject->coords);
+  std::cout << "2 pip " << clip->toString() << " ()" << subject->coords.x
+            << ", " << subject->coords.y << ") " << entry << std::endl;
   do {
     if (subject->intersect) {
       subject->entry = entry;
@@ -190,7 +235,9 @@ void GHphase2(vertex *subject, vertex *clip) {
     }
     subject = subject->next;
   } while (subject != subjectFirst);
-  entry = pointInPolygon(clip, clip->coords);
+  entry = !pointInPolygon(subject, clip->coords);
+  std::cout << "2 pip " << subject->toString() << " (" << clip->coords.x << ", "
+            << clip->coords.y << ") " << entry << std::endl;
   do {
     if (clip->intersect) {
       clip->entry = entry;
@@ -200,43 +247,147 @@ void GHphase2(vertex *subject, vertex *clip) {
   } while (clip != clipFirst);
 }
 
-void GHphase3(vertex *subject, vertex *clip) {
-  vertex *subjectFirst = subject;
-  vertex *clipFirst = clip;
-  while (!subject->intersect) {
-    subject = subject->next;
-  }
-  vertex *result = new vertex(subject->coords, 0.0f, false);
+vertex *GHphase3(vertex *subject, vertex *clip) {
+  // walk through entry and exit points and construct clipped polygons
+  vertex *current = subject;
+  vertex *startPoly = subject;
+  vertex *start = subject;
+
+  vertex *result = nullptr;
+  vertex *resultHead = nullptr;
   while (true) {
-    if (subject->entry) {
-      do {
-        // Moving forward until next intersection point to build polygon
-        subject = subject->next;
-        vertex *add = new vertex(subject->coords);
-        result->next = add;
-        add->prev = result;
-        result = result->next;
-      } while (subject->intersect);
-    } else {
-      do {
-        subject = subject->prev;
-        // Moving backward until next intersection point to build polygon
-        vertex *add = new vertex(subject->coords);
-        result->next = add;
-        add->prev = result;
-        result = result->next;
-      } while (subject->intersect);
+    // find the intersecting point of subject polygon that isnt processed yet
+    while (current->intersect == false || current->processed == true) {
+      current = current->next;
+      // return if looping back to the start of polygon without finding next
+      // intersection point that is unprocessed
+      if (startPoly->coords == current->coords) {
+        std::cout << "3 ended" << std::endl;
+        return result;
+      }
     }
-    subject = subject->neighbor;
+    // denote the start of each sub-polygon of the intersection
+    // most intersection will only create one polygon but not all
+    start = current;
+    std::vector<vec2> points;
+    do {
+      bool isEntry = current->entry;
+      do {
+        current->processed = true;
+        // Move forward at entry points and backward at exit points
+        if (isEntry) {
+          current = current->next;
+        } else {
+          current = current->prev;
+        }
+        points.push_back(current->coords);
+        std::cout << "3 push back " << std::to_string(current->coords.x) << " "
+                  << std::to_string(current->coords.y) << " " << points.size()
+                  << std::endl;
+      } while (!current->intersect);
+
+      // move to neighbor polygon after each streak move in one polygon
+      current->processed = true;
+      current = current->neighbor;
+    } while (current->coords != start->coords); // repeat until polygon closed
+    // build the polygon and connect to the last polygon
+    result = buildPolygon(points);
+    for (int i = 0; i < 10; i++) {
+      result = result->prev;
+      std::cout << "33 result inside " << result << " " << result->toString()
+                << " " << (result == nullptr) << std::endl;
+    }
+    result->nextPoly = resultHead;
+    resultHead = result;
+  }
+}
+
+void polygonClipping(std::vector<BRay> beam, std::vector<vec3> face) {
+  // assume each polygons have at least 3 vertices which is non degenerate
+  vec3 normal = cross(face[1] - face[0], face[2] - face[0]);
+  vec3 origin = face[0];
+  vec3 *intersection = new vec3(0, 0, 0);
+  std::vector<vec3> subject = {};
+  for (int i = 0; i < beam.size(); i++) {
+    bool in = linePlaneIntersection(beam[i], origin, normal, intersection);
+    std::cout << intersection->x << " " << intersection->y << " "
+              << intersection->z << " " << (in ? "true" : "false") << std::endl;
+    if (in) {
+      subject.push_back(*intersection);
+    }
+  }
+
+  // u point rightward and v upward, where normal point toward camera
+  vec3 v = face[1] - face[0];
+  vec3 u = cross(normal, u);
+  std::vector<vec2> subject2D = {};
+  std::vector<vec2> clip2D = {};
+  vertex *subjectList;
+  vertex *clipList;
+  for (int i = 0; i < subject.size(); i++) {
+    subject2D.push_back(vector3To2(u, v, origin, subject[i]));
+  }
+  for (int i = 0; i < face.size(); i++) {
+    clip2D.push_back(vector3To2(u, v, origin, face[i]));
+  }
+  std::cout << "poly done to 2d" << std::endl;
+  subjectList = buildPolygon(subject2D);
+  clipList = buildPolygon(clip2D);
+  for (int i = 0; i < 10; i++) {
+    std::cout << "poly 0 subject " << subjectList << " "
+              << subjectList->toString() << std::endl;
+    subjectList = subjectList->next;
+  }
+  for (int i = 0; i < 10; i++) {
+    std::cout << "poly 0 clip " << clipList << " " << clipList->toString()
+              << std::endl;
+    clipList = clipList->next;
+  }
+  GHphase1(subjectList, clipList);
+  GHphase2(subjectList, clipList);
+  vertex *result = GHphase3(subjectList, clipList);
+  vertex *resultHead = result;
+  for (int i = 0; i < 10; i++) {
+    std::cout << "gh result " << result << " " << result->toString() << " "
+              << (result == nullptr) << std::endl;
+    result = result->next;
+    if (result == resultHead) {
+      if (result->nextPoly != nullptr) {
+        result = result->nextPoly;
+        resultHead = result;
+        std::cout << std::endl;
+      } else {
+        break;
+      }
+    }
   }
 }
 
 int main() {
+  std::vector<BRay> beam;
+  beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, 1, 1)));
+  beam.push_back(BRay(vec3(0, 0, 1), vec3(1, 1, 1)));
+  beam.push_back(BRay(vec3(0, 0, 1), vec3(1, -1, 1)));
+  beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, -1, 1)));
+
+  std::vector<vec3> tempv = {
+      vec3(-1, 1, 1) + vec3(0, 0, 3),   vec3(1, 1, 1) + vec3(0, 0, 5),
+      vec3(-1, 1, -1) + vec3(0, 0, 3),  vec3(1, 1, -1) + vec3(0, 0, 5),
+      vec3(-1, -1, 1) + vec3(0, 0, 3),  vec3(1, -1, 1) + vec3(0, 0, 5),
+      vec3(-1, -1, -1) + vec3(0, 0, 3), vec3(1, -1, -1) + vec3(0, 0, 5)};
+  int tempi[36] = {0, 1, 2, 1, 3, 2, 6, 5, 4, 6, 7, 5, 0, 5, 1, 0, 4, 5,
+                   2, 3, 6, 3, 7, 6, 0, 2, 4, 2, 6, 4, 1, 5, 3, 3, 5, 7};
+  for (int i = 0; i < 12; i++) {
+    polygonClipping(beam, std::vector<vec3>{tempv[tempi[3 * i]],
+                                            tempv[tempi[3 * i + 1]],
+                                            tempv[tempi[3 * i + 2]]});
+  }
+  return 0;
   std::vector<vec2> subjectData = {vec2(1, 3), vec2(1, 7), vec2(7, 7),
                                    vec2(7, 3)};
   std::vector<vec2> clipData = {vec2(2, 1), vec2(2, 5), vec2(4, 2),
                                 vec2(6.5f, 4.5f), vec2(6.5f, 1.5f)};
-
+  // std::reverse(clipData.begin(), clipData.end());
   vertex *subject = buildPolygon(subjectData);
   vertex *clip = buildPolygon(clipData);
   vertex *subjectHead = subject;
@@ -244,50 +395,59 @@ int main() {
   std::cout << "First subject " << subject << " " << subject->toString()
             << std::endl;
 
-  std::cout << "In polygon check " << pointInPolygon(clip, vec2(1, 3))
+  std::cout << "In polygon check " << pointInPolygon(clip, vec2(3, 3))
             << std::endl;
 
-  // for (int i = 0; i < 10; i++) {
-  //   std::cout << "Subject " << subject << " " << subject->toString()
-  //             << std::endl;
-  //   subject = subject->prev;
-  // }
-  // for (int i = 0; i < 10; i++) {
-  //   std::cout << "Clip " << clip << " " << clip->toString()
-  //             << std::endl;
-  //   clip = clip->prev;
-  // }
+  for (int i = 0; i < 10; i++) {
+    std::cout << "0 subject " << subject << " " << subject->toString()
+              << std::endl;
+    subject = subject->next;
+  }
+  for (int i = 0; i < 10; i++) {
+    std::cout << "0 clip " << clip << " " << clip->toString() << std::endl;
+    clip = clip->next;
+  }
 
   GHphase1(subject, clip);
-  // for (int i = 0; i < 10; i++) {
-  //   if (subject->intersect) {
-  //     std::cout << "Subject " << subject << " " << subject->toString()
-  //               << std::endl;
-  //   }
-  //   subject = subject->prev;
-  // }
-  // for (int i = 0; i < 10; i++) {
-  //   if (clip->intersect) {
-  //     std::cout << "Clip " << clip << " " << clip->toString() << std::endl;
-  //   }
-  //   clip = clip->prev;
-  // }
+
+  for (int i = 0; i < 10; i++) {
+    std::cout << "1 subject " << subject << " " << subject->toString()
+              << std::endl;
+    subject = subject->next;
+  }
+  for (int i = 0; i < 10; i++) {
+    std::cout << "1 clip " << clip << " " << clip->toString() << std::endl;
+    clip = clip->next;
+  }
   subject = subjectHead;
   clip = clipHead;
   GHphase2(subject, clip);
   for (int i = 0; i < 10; i++) {
-    if (subject->intersect) {
-      std::cout << "Subject " << subject << " " << subject->toString() << " "
-                << subject->entry << std::endl;
-    }
-    subject = subject->prev;
+    std::cout << "2 subject " << subject << " " << subject->toString() << " "
+              << subject->entry << std::endl;
+    subject = subject->next;
   }
   for (int i = 0; i < 10; i++) {
-    if (clip->intersect) {
-      std::cout << "Clip " << clip << " " << clip->toString() << " "
-                << subject->entry << std::endl;
+    std::cout << "2 clip " << clip << " " << clip->toString() << " "
+              << clip->entry << std::endl;
+    clip = clip->next;
+  }
+  vertex *result = GHphase3(subject, clip);
+  vertex *resultHead = result;
+  for (int i = 0; i < 10; i++) {
+
+    std::cout << "3 result " << result << " " << result->toString() << " "
+              << (result == nullptr) << std::endl;
+    result = result->next;
+    if (result == resultHead) {
+      if (result->nextPoly != nullptr) {
+        result = result->nextPoly;
+        resultHead = result;
+        std::cout << std::endl;
+      } else {
+        break;
+      }
     }
-    clip = clip->prev;
   }
   return 0;
 }
