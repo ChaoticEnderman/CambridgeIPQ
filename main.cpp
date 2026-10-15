@@ -1,9 +1,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_scancode.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/vector_float2.hpp>
@@ -15,8 +17,10 @@
 #include <cstdlib>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <random>
 #include <vector>
 
+#include "beamtracer.h"
 #include "camera.h"
 #include "color.h"
 #include "mesh.h"
@@ -26,6 +30,8 @@
 
 using namespace glm;
 constexpr double pi = 3.14159265358979323846;
+
+bool newPolygonTest = true;
 
 SDL_Window *window;
 Uint32 previousTick;
@@ -154,16 +160,75 @@ void loopSDL() {
   // raster3DTriangle(vertices3d[2], 0, 255, 0);
   // raster3DTriangle(vertices3d[3], 0, 200, 0);
 
+  if (!newPolygonTest) {
+    return;
+  } else {
+    newPolygonTest = false;
+  }
   std::chrono::time_point start = std::chrono::steady_clock::now();
-  traceRays();
-  // raster3Dcoord();
-  //  raster3DMesh(getMesh(0));
-  //  raster3DMesh(getMesh(1));
+  int size = std::rand() % 5 + 3;
+  std::vector<vec2> subject = {};
+  std::vector<vec2> clip = {};
+  // std::vector<vec2> subject = {vec2(50, 150), vec2(50, 350), vec2(350, 350),
+  // vec2(350, 150)};
+  // std::vector<vec2> clip = {vec2(100, 50), vec2(100, 250), vec2(200, 100),
+  // vec2(325, 225), vec2(325, 75)};
+  std::cout << "test size is " << size << std::endl;
+  setColor(color::base::red);
+  for (int i = 0; i < size; i++) {
+    int x = std::rand() % getScreenResolutionX();
+    int y = std::rand() % getScreenResolutionY();
+    subject.push_back(vec2(x, y));
+    if (i != 0) {
+      drawLine(subject[i - 1].x, subject[i - 1].y, subject[i].x, subject[i].y);
+    }
+    if (i == size - 1) {
+      drawLine(subject[i].x, subject[i].y, subject[0].x, subject[0].y);
+    }
+  }
+  setColor(color::base::blue);
+  size = std::rand() % 5 + 3;
+  for (int i = 0; i < size; i++) {
+    int x = std::rand() % getScreenResolutionX();
+    int y = std::rand() % getScreenResolutionY();
+    clip.push_back(vec2(x, y));
+    if (i != 0) {
+      drawLine(clip[i - 1].x, clip[i - 1].y, clip[i].x, clip[i].y);
+    }
+    if (i == size - 1) {
+      drawLine(clip[i].x, clip[i].y, clip[0].x, clip[0].y);
+    }
+  }
+  setColor(color::base::green);
+  int head = 0;
+  std::vector<vec2> result = testClipping(subject, clip);
+  std::vector<vec2> subres = {};
+  for (int i = 0; i < result.size(); i++) {
+    if (result[i].x < 1000000) {
+      subres.push_back(result[i]);
+    } else {
+      for (int j = 0; j < subres.size(); j++) {
+        if (j < subres.size() - 1) {
+          drawLine(subres[j + 1].x, subres[j + 1].y, subres[j].x, subres[j].y);
+          std::cout << "drawing open line " << j << std::endl;
+        } else {
+          drawLine(subres[j].x, subres[j].y, subres[0].x, subres[0].y);
+          std::cout << "drawing close line " << j << std::endl;
+        }
+      }
+      subres.clear();
+    }
+  }
+
+  //  traceRays();
+  //   raster3Dcoord();
+  // raster3DMesh(getMesh(0));
+  // raster3DMesh(getMesh(1));
   std::chrono::time_point end = std::chrono::steady_clock::now();
   std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
   std::cout << "Frame time: " << duration.count() << " ns\n";
-  updateTexture();
+  // updateTexture();
   nextFrame();
 }
 
@@ -202,44 +267,50 @@ int init() {
     SDL_Event e;
     // poll for input
     while (SDL_PollEvent(&e)) {
+      movement = vec3(0.0f, 0.0f, 0.0f);
+      rotation = vec3(0.0f, 0.0f, 0.0f);
       // polling for quit signal
       switch (e.type) {
       case SDL_QUIT:
         running = false;
         break;
+      case SDL_KEYDOWN:
+
+        if (keystate[SDL_SCANCODE_W]) {
+          movement.z += 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_S]) {
+          movement.z -= 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_D]) {
+          movement.x += 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_A]) {
+          movement.x -= 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_E]) {
+          movement.y += 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_Q]) {
+          movement.y -= 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_UP]) {
+          rotation.x -= 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_DOWN]) {
+          rotation.x += 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_RIGHT]) {
+          rotation.y += 1.0f;
+        }
+        if (keystate[SDL_SCANCODE_LEFT]) {
+          rotation.y -= 1.0f;
+        }
+      case SDL_KEYUP:
+        if (keystate[SDL_SCANCODE_Z]) {
+          newPolygonTest = true;
+        }
       }
-    }
-    movement = vec3(0.0f, 0.0f, 0.0f);
-    rotation = vec3(0.0f, 0.0f, 0.0f);
-    if (keystate[SDL_SCANCODE_W]) {
-      movement.z += 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_S]) {
-      movement.z -= 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_D]) {
-      movement.x += 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_A]) {
-      movement.x -= 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_E]) {
-      movement.y += 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_Q]) {
-      movement.y -= 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_UP]) {
-      rotation.x -= 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_DOWN]) {
-      rotation.x += 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_RIGHT]) {
-      rotation.y += 1.0f;
-    }
-    if (keystate[SDL_SCANCODE_LEFT]) {
-      rotation.y -= 1.0f;
     }
 
     // camera movement
@@ -256,11 +327,13 @@ int init() {
     currentTick = SDL_GetTicks();
 
     // profiling
-    std::cout << "delta " << delta << " cam position " << getCameraPosition().x
-              << " " << getCameraPosition().y << " " << getCameraPosition().z
-              << " cam rotation " << getCameraRotation().x << " "
-              << getCameraRotation().y << " " << getCameraPosition().z
-              << std::endl;
+    if (false) {
+      std::cout << "delta " << delta << " cam position "
+                << getCameraPosition().x << " " << getCameraPosition().y << " "
+                << getCameraPosition().z << " cam rotation "
+                << getCameraRotation().x << " " << getCameraRotation().y << " "
+                << getCameraPosition().z << std::endl;
+    }
     loopSDL();
 
     delta = (currentTick - previousTick) / 1000.0f;

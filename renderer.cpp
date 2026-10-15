@@ -31,7 +31,6 @@ void setDefaultTexture() {
 void updateTexture() {
   SDL_UpdateTexture(texture, NULL, fragment,
                     getScreenResolutionX() * sizeof(uint32_t));
-  SDL_RenderClear(renderer);
   SDL_RenderCopy(renderer, texture, NULL, NULL);
   memset(fragment, 0,
          getScreenResolutionX() * getScreenResolutionY() * sizeof(uint32_t));
@@ -45,7 +44,7 @@ void clear() {
 }
 
 void setColor(color color) {
-  SDL_SetRenderDrawColor(renderer, color.r, color.b, color.g, color.a);
+  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }
 
 void drawPoint(int x, int y) { SDL_RenderDrawPoint(renderer, x, y); }
