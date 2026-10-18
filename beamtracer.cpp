@@ -14,8 +14,10 @@
 #include <ostream>
 #include <stdlib.h>
 
+#include <algorithm>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <numeric>
 #include <string>
 #include <sys/types.h>
 #include <vector>
@@ -27,11 +29,14 @@
 
 using namespace glm;
 
-const float epsilon = 0.0001;
+const float epsilon = 0.0001f;
+float camLen = 0.1f;
 
 inline float cross2D(vec2 ab, vec2 ac) { return ab.x * ac.y - ab.y * ac.x; }
 
 static inline int sgn(int64_t v) { return (v > 0) - (v < 0); }
+
+mat4x4 cameraMat = mat4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
 bool segmentIntersect(vec2 a, vec2 b, vec2 c, vec2 d, float *t, float *u,
                       vec2 *point) {
@@ -105,39 +110,24 @@ struct vertex {
   }
 };
 
-struct BRay {
-  vec3 origin;
-  vec3 direction;
-  BRay(vec3 o, vec3 d) {
-    origin = o;
-    direction = d;
-  };
-  std::string toString() {
-    return std::to_string((origin.x)) + " " + std::to_string((origin.y)) + " " +
-           std::to_string((origin.z)) + " " + std::to_string((direction.x)) +
-           " " + std::to_string((direction.y)) + " " +
-           std::to_string((direction.z));
-  };
-};
-
-float linePlaneIntersection(BRay line, vec3 point, vec3 normal,
-                            vec3 *intersection) {
-  // return the point where a line and a plane intersect
-  // false if the plane is in the back of line direction
-  // n*(P_o - P) = 0
-  // n*P = n*P_o
-  // P = O + tD
-  // n*(O + tD) = n*P_o
-  // n*O + t*n*D = n*P_o
-  // t = (n*P_o - n*O) / n*D
-  if (abs(dot(normal, line.direction)) < 0.0001f) {
-    return false; // parallel to the plane
-  }
-  float t = (dot(normal, point) - dot(normal, line.origin)) /
-            dot(normal, line.direction);
-  *intersection = line.origin + t * line.direction;
-  return t;
-}
+// float linePlaneIntersection(BRay line, vec3 point, vec3 normal,
+//                             vec3 *intersection) {
+//   // return the point where a line and a plane intersect
+//   // false if the plane is in the back of line direction
+//   // n*(P_o - P) = 0
+//   // n*P = n*P_o
+//   // P = O + tD
+//   // n*(O + tD) = n*P_o
+//   // n*O + t*n*D = n*P_o
+//   // t = (n*P_o - n*O) / n*D
+//   if (abs(dot(normal, line.direction)) < 0.0001f) {
+//     return false; // parallel to the plane
+//   }
+//   float t = (dot(normal, point) - dot(normal, line.origin)) /
+//             dot(normal, line.direction);
+//   *intersection = line.origin + t * line.direction;
+//   return t;
+// }
 
 vec2 vector3To2(vec3 u, vec3 v, vec3 origin, vec3 point) {
   vec3 d = point - origin;
@@ -303,7 +293,7 @@ vertex *GHphase3(vertex *subject, vertex *clip) {
   }
 }
 
-void polygonClipping(std::vector<BRay> beam, std::vector<vec3> face) {
+void polygonClipping(std::vector<vec3> beam, std::vector<vec3> face) {
   // assume each polygons have at least 3 vertices which is non degenerate
   vec3 normal = cross(face[1] - face[0], face[2] - face[0]);
   vec3 origin = face[0];
@@ -314,40 +304,15 @@ void polygonClipping(std::vector<BRay> beam, std::vector<vec3> face) {
   std::cout << "poly face 2 " << face[2].x << " " << face[2].y << " "
             << face[2].z << std::endl;
   vec3 *intersection = new vec3(0, 0, 0);
-  std::vector<vec3> subject = {};
-  for (int i = 0; i < beam.size(); i++) {
-    float in = linePlaneIntersection(beam[i], origin, normal, intersection);
-    std::cout << "(" << beam[i].origin.x << " " << beam[i].origin.y << " "
-              << beam[i].origin.z << ") (" << beam[i].direction.x << " "
-              << beam[i].direction.y << " " << beam[i].direction.z << ") ";
-    std::cout << intersection->x << " " << intersection->y << " "
-              << intersection->z << " in? " << in << std::endl;
-    if (in > 0) {
-      subject.push_back(*intersection);
-    }
-  }
-  if (subject.size() < 4) {
-    return;
-  }
-
-  // u point rightward and v upward, where normal point toward camera
-  vec3 v = face[1] - face[0];
-  vec3 u = cross(normal, v);
   std::vector<vec2> subject2D = {};
   std::vector<vec2> clip2D = {};
   vertex *subjectList;
   vertex *clipList;
-  std::cout << "poly 3to2 normal " << normal.x << " " << normal.y << " "
-            << normal.z << std::endl;
-  std::cout << "poly 3to2 u " << u.x << " " << u.y << " " << u.z << std::endl;
-  std::cout << "poly 3to2 v " << v.x << " " << v.y << " " << v.z << std::endl;
-  std::cout << "poly 3to2 origin " << origin.x << " " << origin.y << " "
-            << origin.z << std::endl;
-  for (int i = 0; i < subject.size(); i++) {
-    subject2D.push_back(vector3To2(u, v, origin, subject[i]));
+  for (int i = 0; i < beam.size(); i++) {
+    subject2D.push_back(vec2(beam[i].x, beam[i].y));
   }
   for (int i = 0; i < face.size(); i++) {
-    clip2D.push_back(vector3To2(u, v, origin, face[i]));
+    clip2D.push_back(vec2(face[i].x, face[i].y));
   }
   // std::cout << "poly done to 2d" << std::endl;
   subjectList = buildPolygon(subject2D);
@@ -377,10 +342,9 @@ void polygonClipping(std::vector<BRay> beam, std::vector<vec3> face) {
     return;
   }
   for (int i = 0; i < 10; i++) {
-    vec3 temp = vector2To3(u, v, origin, result->coords);
-    std::cout << "poly result " << temp.x << " " << temp.y << " " << temp.z
-              << std::endl;
-    ;
+    // vec3 temp = vector2To3(u, v, origin, result->coords);
+    // std::cout << "poly result " << temp.x << " " << temp.y << " " << temp.z
+    //           << std::endl;
     result = result->next;
     if (result == resultHead) {
       if (result->nextPoly != nullptr) {
@@ -431,12 +395,90 @@ std::vector<vec2> testClipping(std::vector<vec2> subject,
   return resultCoords;
 }
 
+void computeRotationMatrixesBT() {
+  float pitch = -getCameraRotation().x;
+  float yaw = -getCameraRotation().y;
+
+  mat4x4 transMat =
+      mat4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -getCameraPosition().x,
+             -getCameraPosition().y, -getCameraPosition().z, 1);
+  mat3x3 pitchMat =
+      mat3x3(1, 0, 0, 0, cos(pitch), sin(pitch), 0, -sin(pitch), cos(pitch));
+  mat3x3 yawMat =
+      mat3x3(cos(yaw), 0, -sin(yaw), 0, 1, 0, sin(yaw), 0, cos(yaw));
+  cameraMat = pitchMat * yawMat;
+  cameraMat *= transMat;
+}
+
+void traceBeams(vec3 apex, vec3 d,
+                std::vector<vec2> polygon = {vec2(-1, -1), vec2(-1, 1),
+                                             vec2(1, 1), vec2(1, -1)}) {
+  std::vector<vec2> crossSection;
+  int objectIndex;
+  mesh m = getMesh(0);
+  // save a copy to mutate
+  std::vector<vec3> vertices;
+  std::vector<int> indices;
+  std::vector<color> colors;
+  vec3 u, v;
+  if (d.x < d.y && d.x < d.z) {
+    u = cross(d, vec3(1, 0, 0));
+  } else if (d.y < d.x && d.y < d.z) {
+    u = cross(d, vec3(0, 1, 0));
+  } else if (d.z < d.x && d.z < d.y) {
+    u = cross(d, vec3(0, 0, 1));
+  }
+  v = cross(u, d);
+  vec3 vert[3];
+  color col = color::base::black;
+  // projecting cross section to beam space
+  for (int j = 0; j < crossSection.size(); j++) {
+    vec3 p = vec3(polygon[j].x, polygon[j].y, 1);
+    crossSection.push_back(vec3(dot(p, u), dot(p, v), dot(p, d)));
+  }
+  // get a copy of all triangles to modify
+  for (int i = 0; i < getSceneSize(); i++) {
+    m = getMesh(i);
+    std::vector<vec3> tempVertices = m.getVertices();
+    std::vector<int> tempIndices = m.getIndices();
+    std::vector<color> tempColors = m.getVertexColors();
+    vertices.insert(vertices.end(), tempVertices.begin(), tempVertices.end());
+    indices.insert(indices.end(), tempIndices.begin(), tempIndices.end());
+    colors.insert(colors.end(), tempColors.begin(), tempColors.end());
+  }
+  // projecting the vertices to beam space
+  for (int j = 0; j < vertices.size(); j++) {
+    vec3 p = vertices[j] - apex;
+    vertices[j] = vec3(dot(p, u), dot(p, v), dot(p, d));
+  }
+  // sort the mesh front to back
+  std::vector<float> minZ(indices.size() / 3);
+  for (int j = 0; j < indices.size() / 3; j++) {
+    minZ[j] = std::min(
+        std::min(vertices[indices[3 * j]].z, vertices[indices[3 * j + 1]].z),
+        vertices[indices[3 * j + 2]].z);
+  }
+  // TODO: sort triples of indices by their corresponding minZ
+  std::vector<int> order(indices.size() / 3);
+  std::vector<int> newIndices(indices.size());
+  std::iota(order.begin(), order.end(), 0);
+  std::sort(order.begin(), order.end(),
+            [&](int a, int b) { return minZ[a] < minZ[b]; });
+  for (int i = 0; i < order.size(); i++) {
+    newIndices.push_back(indices[order[i] * 3]);
+    newIndices.push_back(indices[order[i] * 3 + 1]);
+    newIndices.push_back(indices[order[i] * 3 + 2]);
+  }
+  // process each triangle
+  for (int i = 0; i < indices.size() / 3; i++) {
+  }
+}
 int main2() {
-  std::vector<BRay> beam;
-  beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, 1, 1)));
-  beam.push_back(BRay(vec3(0, 0, 1), vec3(1, 1, 1)));
-  beam.push_back(BRay(vec3(0, 0, 1), vec3(1, 0, 1)));
-  beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, 0, 1)));
+  // std::vector<BRay> beam;
+  // beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, 1, 1)));
+  // beam.push_back(BRay(vec3(0, 0, 1), vec3(1, 1, 1)));
+  // beam.push_back(BRay(vec3(0, 0, 1), vec3(1, 0, 1)));
+  // beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, 0, 1)));
 
   std::vector<vec3> tempv = {
       vec3(-1, 1, 1) + vec3(0, 0, 5),   vec3(1, 1, 1) + vec3(0, 0, 5),
@@ -447,10 +489,11 @@ int main2() {
                    2, 3, 6, 3, 7, 6, 0, 2, 4, 2, 6, 4, 1, 5, 3, 3, 5, 7};
   for (int i = 0; i < 12; i++) {
     std::cout << "polygon clipping" << std::endl;
-    // polygonClipping(beam, std::vector<vec3>{tempv[2], tempv[3], tempv[6]});
-    polygonClipping(beam, std::vector<vec3>{tempv[tempi[3 * i]],
-                                            tempv[tempi[3 * i + 1]],
-                                            tempv[tempi[3 * i + 2]]});
+    // polygonClipping(beam, std::vector<vec3>{tempv[2], tempv[3],
+    // tempv[6]});
+    // polygonClipping(beam, std::vector<vec3>{tempv[tempi[3 * i]],
+    //                                         tempv[tempi[3 * i + 1]],
+    //                                         tempv[tempi[3 * i + 2]]});
   }
   return 0;
   std::vector<vec2> subjectData = {vec2(1, 3), vec2(1, 7), vec2(7, 7),
