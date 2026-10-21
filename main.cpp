@@ -166,37 +166,40 @@ void loopSDL() {
     newPolygonTest = false;
   }
   std::chrono::time_point start = std::chrono::steady_clock::now();
+  std::vector<vec3> subject = {};
+  std::vector<vec3> clip = {};
+  // std::vector<vec3> subject = {vec3(50, 150, 0), vec3(50, 350, 0),
+  //                              vec3(350, 350, 0), vec3(350, 150, 0)};
+  // std::vector<vec3> clip = {vec3(100, 50, 0), vec3(100, 250, 0),
+  //                           vec3(200, 100, 0), vec3(325, 225, 0),
+  //                           vec3(325, 75, 0)};
   int size = std::rand() % 5 + 3;
-  std::vector<vec2> subject = {};
-  std::vector<vec2> clip = {};
-  // std::vector<vec2> subject = {vec2(50, 150), vec2(50, 350), vec2(350, 350),
-  // vec2(350, 150)};
-  // std::vector<vec2> clip = {vec2(100, 50), vec2(100, 250), vec2(200, 100),
-  // vec2(325, 225), vec2(325, 75)};
-  std::cout << "test size is " << size << std::endl;
+  // size = subject.size();
   setColor(color::base::red);
   for (int i = 0; i < size; i++) {
     int x = std::rand() % getScreenResolutionX();
     int y = std::rand() % getScreenResolutionY();
-    subject.push_back(vec2(x, y));
+    subject.push_back(vec3(x, y, 0));
     if (i != 0) {
-      drawLine(subject[i - 1].x, subject[i - 1].y, subject[i].x, subject[i].y);
+      // drawLine(subject[i - 1].x, subject[i - 1].y, subject[i].x,
+      // subject[i].y);
     }
     if (i == size - 1) {
-      drawLine(subject[i].x, subject[i].y, subject[0].x, subject[0].y);
+      // drawLine(subject[i].x, subject[i].y, subject[0].x, subject[0].y);
     }
   }
   setColor(color::base::blue);
   size = std::rand() % 5 + 3;
+  // size = clip.size();
   for (int i = 0; i < size; i++) {
     int x = std::rand() % getScreenResolutionX();
     int y = std::rand() % getScreenResolutionY();
-    clip.push_back(vec2(x, y));
+    clip.push_back(vec3(x, y, 0));
     if (i != 0) {
-      drawLine(clip[i - 1].x, clip[i - 1].y, clip[i].x, clip[i].y);
+      // drawLine(clip[i - 1].x, clip[i - 1].y, clip[i].x, clip[i].y);
     }
     if (i == size - 1) {
-      drawLine(clip[i].x, clip[i].y, clip[0].x, clip[0].y);
+      // drawLine(clip[i].x, clip[i].y, clip[0].x, clip[0].y);
     }
   }
   setColor(color::base::green);
@@ -209,17 +212,17 @@ void loopSDL() {
     } else {
       for (int j = 0; j < subres.size(); j++) {
         if (j < subres.size() - 1) {
-          drawLine(subres[j + 1].x, subres[j + 1].y, subres[j].x, subres[j].y);
-          std::cout << "drawing open line " << j << std::endl;
+          // drawLine(subres[j + 1].x, subres[j + 1].y, subres[j].x,
+          // subres[j].y);
         } else {
-          drawLine(subres[j].x, subres[j].y, subres[0].x, subres[0].y);
-          std::cout << "drawing close line " << j << std::endl;
+          // drawLine(subres[j].x, subres[j].y, subres[0].x, subres[0].y);
         }
       }
       subres.clear();
     }
   }
 
+  traceBeams();
   //  traceRays();
   //   raster3Dcoord();
   // raster3DMesh(getMesh(0));
