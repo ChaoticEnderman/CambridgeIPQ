@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <vector>
 
+void testSplitAnnulus();
+
 std::vector<vec2> testClipping(std::vector<vec3> subject,
                                std::vector<vec3> clip);
 

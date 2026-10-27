@@ -1,5 +1,6 @@
 #include <SDL2/SDL_render.h>
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -12,6 +13,7 @@
 #include <glm/geometric.hpp>
 #include <iterator>
 #include <ostream>
+#include <ratio>
 #include <stdlib.h>
 
 #include <algorithm>
@@ -31,7 +33,8 @@
 using namespace glm;
 using namespace std;
 
-const float epsilon = 0.0001f;
+const float EPSILON = 0.0001f;
+const int MAXDEPTH = 1;
 // float camLen = 0.1f;
 
 inline float cross2D(vec2 ab, vec2 ac) { return ab.x * ac.y - ab.y * ac.x; }
@@ -53,7 +56,7 @@ bool segmentIntersect(vec2 a, vec2 b, vec2 c, vec2 d, float *t, float *u,
   vec2 q = c;
   vec2 s = d - c;
   float rs = cross2D(r, s);
-  if (abs(rs) < epsilon) {
+  if (abs(rs) < EPSILON) {
     // early bail out since rs = 0 mean the segments are either colinear or
     // parallel which we consider to be non-intersecting for algorithm purposes
     // as well as preventing division by zero
@@ -66,7 +69,7 @@ bool segmentIntersect(vec2 a, vec2 b, vec2 c, vec2 d, float *t, float *u,
   *u = cross2D(q - p, r) * rs;
   *point = p + (*t * r);
   // check if the intersection is inside the segment or not
-  return *t > 0.0f && *u >= 0.0f && *u < 1.0f;
+  return *t >= 0.0f && *t < 1.0f && *u >= 0.0f && *u < 1.0f;
 }
 
 struct vertex {
@@ -199,8 +202,21 @@ bool pointInPolygon(vertex *p, vec2 point) {
   return count % 2;
 }
 
+bool polygonClockwise(vertex *polygon) {
+  float area = 0.0f;
+  vertex *head = polygon;
+  do {
+    area += polygon->coords.x * polygon->next->coords.y -
+            polygon->next->coords.x * polygon->coords.y;
+    polygon = polygon->next;
+  } while (polygon != head);
+  return area < 0.0f;
+}
+
 // split a ring shape into two concave polygons
-vertex *splitAnnulus(vertex *outside, vertex *inside) {
+vector<vertex *> splitAnnulus(vertex *outside, vertex *inside,
+                              const bool outerWindingCw,
+                              const bool innerWindingCw) {
   vec2 leftmost(INFINITY, 0), rightmost(-INFINITY, 0);
   vertex *innerLeftEdge, *innerRightEdge;
   vertex *insideHead = inside;
@@ -250,6 +266,9 @@ vertex *splitAnnulus(vertex *outside, vertex *inside) {
     }
     outside = outside->next;
   } while (outside != outsideHead);
+  std::vector<vec2> topCoords = {};
+  std::vector<vec2> bottomCoords = {};
+
   // insert data in between intersecting edges
   vertex *insertLeft = new vertex(vec2(nearestLeft));
   leftEdge->next->prev = insertLeft;
@@ -262,41 +281,78 @@ vertex *splitAnnulus(vertex *outside, vertex *inside) {
   insertRight->prev = rightEdge;
   rightEdge->next = insertRight;
 
-  // building polygon
-  outsideHead = outside;
-  insideHead = inside;
-  bool outerPolygon = true;
-  bool jumpInLeft;
-  vertex *top = outside;
-  vertex *topHead = top;
-  // move in or out at each intersection
-  do {
-    if (outside == leftEdge && outerPolygon) {
-      outside = innerLeftEdge;
-      outerPolygon = !outerPolygon;
-      // jump in from the left, only out from the right
-      jumpInLeft = true;
-    } else if ((outside == innerLeftEdge && !outerPolygon)) {
-      outside = insertLeft;
-      outerPolygon = !outerPolygon;
-    } else if (outside == rightEdge && outerPolygon) {
-      outside = innerRightEdge;
-      outerPolygon = !outerPolygon;
-      // jump in from the right, only out from the left
-      jumpInLeft = false;
-    } else if ((outside == innerRightEdge && !outerPolygon)) {
-      outside = insertRight;
-      outerPolygon = !outerPolygon;
-    } else {
-      outside = outside->next;
-      top->next = outside;
-      outside->prev = top;
-      top = top->next;
-    }
-  } while (outside != outsideHead);
-  top->next = topHead;
-  topHead->prev = top;
+  vertex *current;
+  // top outer
+  current = insertRight;
+  while (current != insertLeft) {
+    topCoords.push_back(current->coords);
+    current = outerWindingCw ? current->prev : current->next;
+  }
+  topCoords.push_back(current->coords);
+  // top inner
+  current = innerLeftEdge;
+  while (current != innerRightEdge) {
+    topCoords.push_back(current->coords);
+    current = innerWindingCw ? current->next : current->prev;
+  }
+  topCoords.push_back(current->coords);
+  // bottom outer
+  current = insertLeft;
+  while (current != insertRight) {
+    bottomCoords.push_back(current->coords);
+    current = outerWindingCw ? current->prev : current->next;
+  }
+  bottomCoords.push_back(current->coords);
+  // bottom inner
+  current = innerRightEdge;
+  while (current != innerLeftEdge) {
+    bottomCoords.push_back(current->coords);
+    current = innerWindingCw ? current->next : current->prev;
+  }
+  bottomCoords.push_back(current->coords);
+  cout << "TSA size " << topCoords.size() << " " << bottomCoords.size() << endl;
+  for (int i = 0; i < topCoords.size(); i++) {
+    std::cout << "TSA top vector " << topCoords[i].x << " " << topCoords[i].y
+              << endl;
+  }
+  for (int i = 0; i < bottomCoords.size(); i++) {
+    std::cout << "TSA bottom vector " << bottomCoords[i].x << " "
+              << bottomCoords[i].y << endl;
+  }
+  cout << endl;
+  vertex *resultTop, *resultBottom;
+  resultTop = buildPolygon(topCoords);
+  resultBottom = buildPolygon(bottomCoords);
+  for (int i = 0; i < 10; i++) {
+    std::cout << "TSA top list " << resultTop->coords.x << " "
+              << resultTop->coords.y << endl;
+    resultTop = resultTop->next;
+  }
+  for (int i = 0; i < 10; i++) {
+    std::cout << "TSA bottom list " << resultBottom->coords.x << " "
+              << resultBottom->coords.y << endl;
+    resultBottom = resultBottom->next;
+  }
+  return {resultTop, resultBottom};
 }
+
+// void testSplitAnnulus() {
+//   std::vector<vec2> outside = {vec2(0, 0), vec2(0, 10), vec2(10, 10),
+//                                vec2(10, 0)};
+//   std::vector<vec2> inside = {vec2(2, 8), vec2(8, 5), vec2(6, 1), vec2(4,
+//   1)}; vertex *outsideList = buildPolygon(outside); vertex *insideList =
+//   buildPolygon(inside); vertex *top, *bottom; std::tie(top, bottom) =
+//   splitAnnulus(outsideList, insideList, true, true); for (int i = 0; i < 10;
+//   i++) {
+//     std::cout << "TSA top " << top->coords.x << " " << top->coords.y << endl;
+//     top = top->next;
+//   }
+//   for (int i = 0; i < 10; i++) {
+//     std::cout << "TSA bottom " << bottom->coords.x << " " << bottom->coords.y
+//               << endl;
+//     bottom = bottom->next;
+//   }
+// }
 
 void GHphase1(vertex *subject, vertex *clip) {
   vertex *subjectFirst = subject, *clipFirst = clip;
@@ -367,15 +423,31 @@ void GHphase2(vertex *subject, vertex *clip) {
 
 vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
   // walk through entry and exit points and construct clipped polygons
-  vertex *current = subject;
-  vertex *startPoly = subject;
+  vertex *current, *startPoly;
   vertex *start = subject;
 
   vertex *result = nullptr;
   vertex *resultHead = nullptr;
   // toggle to check if we are running in subject or clip polygon
   bool toggle;
+  current = clip;
+  startPoly = clip;
+  // clear the processed values so that phase 3 can be done multiple times
+  int testSubjectIntersection = 0;
+  int testClipIntersection = 0;
   do {
+    if (current->intersect) {
+      testClipIntersection += 1;
+    }
+    current->processed = false;
+    current = current->next;
+  } while (current != startPoly);
+  current = subject;
+  startPoly = subject;
+  do {
+    if (current->intersect) {
+      testSubjectIntersection += 1;
+    }
     current->processed = false;
     current = current->next;
   } while (current != startPoly);
@@ -383,10 +455,11 @@ vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
     // find the intersecting point of subject polygon that isnt processed yet
     while (current->intersect == false || current->processed == true) {
       current = current->next;
+      cout << "TC 3 finding intersection " << endl;
       // return if looping back to the start of polygon without finding next
       // intersection point that is unprocessed
       if (startPoly->coords == current->coords) {
-        cout << "3 ended" << endl;
+        cout << "TC 3 ended" << endl;
         return result;
       }
     }
@@ -406,7 +479,7 @@ vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
           current = current->prev;
         }
         points.push_back(current->coords);
-        cout << "3 push back " << to_string(current->coords.x) << " "
+        cout << "TC 3 push back " << to_string(current->coords.x) << " "
              << to_string(current->coords.y) << " " << points.size() << endl;
       } while (!current->intersect);
       toggle = !toggle;
@@ -416,21 +489,21 @@ vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
     } while (current->coords != start->coords); // repeat until polygon closed
     // build the polygon and connect to the last polygon
     result = buildPolygon(points);
-    for (int i = 0; i < 10; i++) {
-      result = result->prev;
-      cout << "33 result inside " << result << " " << result->toString() << " "
-           << (result == nullptr) << endl;
-    }
+    // for (int i = 0; i < 10; i++) {
+    //   result = result->prev;
+    //   cout << "33 result inside " << result << " " << result->toString() << "
+    //   "
+    //        << (result == nullptr) << endl;
+    // }
     result->nextPoly = resultHead;
     resultHead = result;
   }
 }
 
-// clip a projected beam polygon against mesh faces
-// will mutate the beam by subtraction (can leave empty beam)
-// return a list of polygons intersection
-std::tuple<vertex *, vertex *> polygonClipping(vector<vec3> beam,
-                                               vector<vec3> face) {
+// take in projected beam and face their x and y component
+// return difference first and then intersection
+std::tuple<vector<vertex *>, vector<vertex *>>
+polygonClipping(vector<vec3> beam, vector<vec3> face) {
   // assume each polygons have at least 3 vertices which is non degenerate
   vec3 normal = cross(face[1] - face[0], face[2] - face[0]);
   vec3 origin = face[0];
@@ -473,19 +546,42 @@ std::tuple<vertex *, vertex *> polygonClipping(vector<vec3> beam,
   vertex *resultHead = result;
   if (result == nullptr) {
     if (pointInPolygon(subjectList, clipList->coords)) {
-      cout << "poly no intersection clip inside" << endl;
+      cout << "poly no intersection clip inside " << resultBeam << " " << result
+           << endl;
       // beam is holed polygon and need to clip
-      // TODO: clip inside so holed polygon and need to divide
-      // return buildPolygon(clip2D);
-      return {resultBeam, resultBeam};
+      bool outer = polygonClockwise(subjectList);
+      bool inner = polygonClockwise(clipList);
+
+      vector<vertex *> b;
+      vector<vertex *> r;
+      b = splitAnnulus(subjectList, clipList, outer, inner);
+      r = {clipList};
+      cout << "poly no intersection annulus " << b.size() << " " << r.size()
+           << endl;
+      for (int i = 0; i < 10; i++) {
+        b[0] = b[0]->next;
+        std::cout << "poly beam annulus result " << b[0]->coords.x << " "
+                  << b[0]->coords.y << endl;
+      }
+      for (int i = 0; i < 10; i++) {
+        b[1] = b[1]->next;
+        std::cout << "poly beam annulus result " << b[1]->coords.x << " "
+                  << b[1]->coords.y << endl;
+      }
+      for (int i = 0; i < 10; i++) {
+        r[0] = r[0]->next;
+        std::cout << "poly face annulus result " << r[0]->coords.x << " "
+                  << r[0]->coords.y << endl;
+      }
+      return {b, r};
     } else if (pointInPolygon(clipList, subjectList->coords)) {
       cout << "poly no intersection clip outside" << endl;
       // beam lost and not propagate further, the entire beam bounces
-      return {nullptr, resultBeam};
+      return {{nullptr}, {resultBeam}};
     } else {
       cout << "poly no intersection disjoint" << endl;
       // no intersection, the full beam propagate further
-      return {resultBeam, nullptr};
+      return {{resultBeam}, {nullptr}};
     }
   }
   for (int i = 0; i < 10; i++) {
@@ -503,19 +599,13 @@ std::tuple<vertex *, vertex *> polygonClipping(vector<vec3> beam,
       }
     }
   }
-  return {resultBeam, result};
+  return {{resultBeam}, {result}};
 }
 
 vector<vec2> testClipping(vector<vec3> subject, vector<vec3> clip) {
   cout << "test 00 " << subject.size() << " " << clip.size() << endl;
   vec3 normal = cross(clip[1] - clip[0], clip[2] - clip[0]);
   vec3 origin = clip[0];
-  cout << "poly clip 0 " << clip[0].x << " " << clip[0].y << " " << clip[0].z
-       << endl;
-  cout << "poly clip 1 " << clip[1].x << " " << clip[1].y << " " << clip[1].z
-       << endl;
-  cout << "poly clip 2 " << clip[2].x << " " << clip[2].y << " " << clip[2].z
-       << endl;
   vec3 *intersection = new vec3(0, 0, 0);
   vector<vec2> subject2D = {};
   vector<vec2> clip2D = {};
@@ -535,16 +625,13 @@ vector<vec2> testClipping(vector<vec3> subject, vector<vec3> clip) {
   GHphase2(subjectList, clipList);
   // cout << "test 2" << endl;
   vertex *result = GHphase3(subjectList, clipList, true);
-  result = GHphase3(subjectList, clipList, true);
-  // cout << "test 3" << endl;
+  //  cout << "test 3" << endl;
   vertex *resultHead = result;
   if (result == nullptr) {
     return {};
   }
   vector<vec2> resultCoords = {};
-  for (int i = 0; i < 10; i++) {
-    cout << "poly result " << result->coords.x << " " << result->coords.y
-         << endl;
+  for (int i = 0; i < 100; i++) {
     resultCoords.push_back(result->coords);
     result = result->next;
     if (result == resultHead) {
@@ -630,16 +717,29 @@ void traceBeams(vec3 apex = vec3(0, 0, 0), vec3 d = vec3(0, 0, 1),
          << printVec(vertices[newIndices[3 * i + 2]]) << " " << endl;
   }
   // process each triangle
-  // for (int i = 0; i < newIndices.size() / 3; i++) {
-  int i = 6;
-  cout << "PC hitting first triangle? " << printVec(vertices[newIndices[3 * i]])
-       << " " << printVec(vertices[newIndices[3 * i + 1]]) << " "
-       << printVec(vertices[newIndices[3 * i + 2]]) << endl;
-  polygonClipping(crossSection, vector<vec3>{vertices[newIndices[3 * i]],
-                                             vertices[newIndices[3 * i + 1]],
-                                             vertices[newIndices[3 * i + 2]]});
-  // break;
-  // }
+  for (int i = 0; i < newIndices.size() / 3; i++) {
+    cout << "PC hitting first triangle? "
+         << printVec(vertices[newIndices[3 * i]]) << " "
+         << printVec(vertices[newIndices[3 * i + 1]]) << " "
+         << printVec(vertices[newIndices[3 * i + 2]]) << endl;
+    vector<vertex *> resultBeam;
+    vector<vertex *> result;
+    std::tie(resultBeam, result) = polygonClipping(
+        crossSection, vector<vec3>{vertices[newIndices[3 * i]],
+                                   vertices[newIndices[3 * i + 1]],
+                                   vertices[newIndices[3 * i + 2]]});
+    cout << "PC result beam and face size " << resultBeam.size() << " "
+         << result.size() << endl;
+    for (int j = 0; i < result.size(); i++) {
+      vertex *currentResult = result[i];
+      vertex *headResult = currentResult;
+      do {
+        cout << "PC result polygon" << result[i];
+        currentResult = currentResult->next;
+      } while (currentResult != headResult);
+    }
+    // TODO: shoot out next beams to check for reflection and transmission
+  }
 }
 int main2() {
   // vector<BRay> beam;
