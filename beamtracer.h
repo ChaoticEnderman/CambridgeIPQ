@@ -34,6 +34,4 @@ void testSplitAnnulus();
 std::vector<vec2> testClipping(std::vector<vec3> subject,
                                std::vector<vec3> clip);
 
-void traceBeams(vec3 apex = vec3(0, 0, 0), vec3 d = vec3(0, 0, 1),
-                std::vector<vec2> polygon = {vec2(-1, -1), vec2(-1, 1),
-                                             vec2(1, 1), vec2(1, -1)});
+void traceBeams();

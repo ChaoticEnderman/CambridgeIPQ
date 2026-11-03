@@ -1,3 +1,4 @@
+#include "beamtracer.h"
 #include <SDL2/SDL_render.h>
 #include <algorithm>
 #include <array>
@@ -214,9 +215,9 @@ bool polygonClockwise(vertex *polygon) {
 }
 
 // split a ring shape into two concave polygons
-vector<vertex *> splitAnnulus(vertex *outside, vertex *inside,
-                              const bool outerWindingCw,
-                              const bool innerWindingCw) {
+std::tuple<vector<vertex *>, vector<vertex *>>
+splitAnnulus(vertex *outside, vertex *inside, const bool outerWindingCw,
+             const bool innerWindingCw) {
   vec2 leftmost(INFINITY, 0), rightmost(-INFINITY, 0);
   vertex *innerLeftEdge, *innerRightEdge;
   vertex *insideHead = inside;
@@ -311,29 +312,29 @@ vector<vertex *> splitAnnulus(vertex *outside, vertex *inside,
   }
   bottomCoords.push_back(current->coords);
   cout << "TSA size " << topCoords.size() << " " << bottomCoords.size() << endl;
-  for (int i = 0; i < topCoords.size(); i++) {
-    std::cout << "TSA top vector " << topCoords[i].x << " " << topCoords[i].y
-              << endl;
-  }
-  for (int i = 0; i < bottomCoords.size(); i++) {
-    std::cout << "TSA bottom vector " << bottomCoords[i].x << " "
-              << bottomCoords[i].y << endl;
-  }
+  // for (int i = 0; i < topCoords.size(); i++) {
+  //   std::cout << "TSA top vector " << topCoords[i].x << " " << topCoords[i].y
+  //             << endl;
+  // }
+  // for (int i = 0; i < bottomCoords.size(); i++) {
+  //   std::cout << "TSA bottom vector " << bottomCoords[i].x << " "
+  //             << bottomCoords[i].y << endl;
+  // }
   cout << endl;
   vertex *resultTop, *resultBottom;
   resultTop = buildPolygon(topCoords);
   resultBottom = buildPolygon(bottomCoords);
-  for (int i = 0; i < 10; i++) {
-    std::cout << "TSA top list " << resultTop->coords.x << " "
-              << resultTop->coords.y << endl;
-    resultTop = resultTop->next;
-  }
-  for (int i = 0; i < 10; i++) {
-    std::cout << "TSA bottom list " << resultBottom->coords.x << " "
-              << resultBottom->coords.y << endl;
-    resultBottom = resultBottom->next;
-  }
-  return {resultTop, resultBottom};
+  // for (int i = 0; i < 10; i++) {
+  //   std::cout << "TSA top list " << resultTop->coords.x << " "
+  //             << resultTop->coords.y << endl;
+  //   resultTop = resultTop->next;
+  // }
+  // for (int i = 0; i < 10; i++) {
+  //   std::cout << "TSA bottom list " << resultBottom->coords.x << " "
+  //             << resultBottom->coords.y << endl;
+  //   resultBottom = resultBottom->next;
+  // }
+  return {{resultTop, resultBottom}, {inside}};
 }
 
 // void testSplitAnnulus() {
@@ -382,6 +383,7 @@ void GHphase1(vertex *subject, vertex *clip) {
         // linking neighbor
         i1->neighbor = i2;
         i2->neighbor = i1;
+        cout << "1 segment intersect " << point.x << " " << point.y << endl;
       }
       clip = clipNext;
     } while (clip != clipFirst);
@@ -402,26 +404,48 @@ void GHphase2(vertex *subject, vertex *clip) {
   // entry = entry ^ difference;
   cout << "2 pip " << clip->toString() << " (" << subject->coords.x << ", "
        << subject->coords.y << ") " << entry << endl;
+  int timeout = 0;
   do {
+    timeout++;
     if (subject->intersect) {
       subject->entry = entry;
       entry = !entry;
     }
     subject = subject->next;
+    if (timeout > 1000) {
+      std::cerr << "Error timeout subject phase 2" << std::endl;
+      std::abort();
+    }
   } while (subject != subjectFirst);
   entry = !pointInPolygon(subject, clip->coords);
   cout << "2 pip " << subject->toString() << " (" << clip->coords.x << ", "
        << clip->coords.y << ") " << entry << endl;
+  timeout = 0;
   do {
+    timeout++;
     if (clip->intersect) {
       clip->entry = entry;
       entry = !entry;
     }
     clip = clip->next;
+    if (timeout > 1000) {
+      std::cerr << "Error timeout subject phase 2" << std::endl;
+      std::abort();
+    }
   } while (clip != clipFirst);
 }
 
 vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
+  for (int i = 0; i < 10; i++) {
+    cout << "3 subject " << subject->coords.x << " " << subject->coords.y
+         << endl;
+    subject = subject->next;
+  }
+  for (int i = 0; i < 10; i++) {
+    cout << "3 clip " << clip->coords.x << " " << clip->coords.y << endl;
+    clip = clip->next;
+  }
+
   // walk through entry and exit points and construct clipped polygons
   vertex *current, *startPoly;
   vertex *start = subject;
@@ -451,13 +475,19 @@ vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
     current->processed = false;
     current = current->next;
   } while (current != startPoly);
-  while (true) {
+  int timeout = 0;
+  while (timeout < 1000) {
+    timeout++;
+    if (timeout >= 1000) {
+      std::cerr << "Error: 3 timeout" << std::endl;
+      std::abort();
+    }
     // find the intersecting point of subject polygon that isnt processed yet
     while (current->intersect == false || current->processed == true) {
       current = current->next;
-      cout << "TC 3 finding intersection " << endl;
-      // return if looping back to the start of polygon without finding next
-      // intersection point that is unprocessed
+      // cout << "TC 3 finding intersection " << endl;
+      //  return if looping back to the start of polygon without finding next
+      //  intersection point that is unprocessed
       if (startPoly->coords == current->coords) {
         cout << "TC 3 ended" << endl;
         return result;
@@ -479,8 +509,8 @@ vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
           current = current->prev;
         }
         points.push_back(current->coords);
-        cout << "TC 3 push back " << to_string(current->coords.x) << " "
-             << to_string(current->coords.y) << " " << points.size() << endl;
+        // cout << "TC 3 push back " << to_string(current->coords.x) << " "
+        //      << to_string(current->coords.y) << " " << points.size() << endl;
       } while (!current->intersect);
       toggle = !toggle;
       // move to neighbor polygon after each streak move in one polygon
@@ -498,6 +528,8 @@ vertex *GHphase3(vertex *subject, vertex *clip, bool difference = false) {
     result->nextPoly = resultHead;
     resultHead = result;
   }
+  std::cerr << "Error: 3 timeout" << std::endl;
+  std::abort();
 }
 
 // take in projected beam and face their x and y component
@@ -554,8 +586,8 @@ polygonClipping(vector<vec3> beam, vector<vec3> face) {
 
       vector<vertex *> b;
       vector<vertex *> r;
-      b = splitAnnulus(subjectList, clipList, outer, inner);
-      r = {clipList};
+      std::tie(b, r) = splitAnnulus(subjectList, clipList, outer, inner);
+
       cout << "poly no intersection annulus " << b.size() << " " << r.size()
            << endl;
       for (int i = 0; i < 10; i++) {
@@ -577,26 +609,11 @@ polygonClipping(vector<vec3> beam, vector<vec3> face) {
     } else if (pointInPolygon(clipList, subjectList->coords)) {
       cout << "poly no intersection clip outside" << endl;
       // beam lost and not propagate further, the entire beam bounces
-      return {{nullptr}, {resultBeam}};
+      return {{}, {subjectList}};
     } else {
       cout << "poly no intersection disjoint" << endl;
       // no intersection, the full beam propagate further
-      return {{resultBeam}, {nullptr}};
-    }
-  }
-  for (int i = 0; i < 10; i++) {
-    // vec3 temp = vector2To3(u, v, origin, result->coords);
-    // cout << "poly result " << temp.x << " " << temp.y << " " << temp.z
-    //           << endl;
-    result = result->next;
-    if (result == resultHead) {
-      if (result->nextPoly != nullptr) {
-        result = result->nextPoly;
-        resultHead = result;
-        cout << endl;
-      } else {
-        break;
-      }
+      return {{subjectList}, {}};
     }
   }
   return {{resultBeam}, {result}};
@@ -649,10 +666,35 @@ vector<vec2> testClipping(vector<vec3> subject, vector<vec3> clip) {
   return resultCoords;
 }
 
+// Testing out this matrix code
+mat3 makePrimaryMatrix() {
+  // TODO: calculate from camera
+  vec3 cameraF = vec3(0, 0, 1);
+  vec3 cameraR = vec3(1, 0, 0);
+  vec3 cameraU = vec3(0, 1, 0);
+  vec3 row0 = 0.5f * cameraF + 0.5f * cameraR;
+  vec3 row1 = 0.5f * cameraF + 0.5f * cameraU;
+  vec3 row2 = cameraF;
+  return transpose(mat3x3(row0, row1, row2)); // convert to rows
+}
+mat3 makeChildMatrix(mat3x3 parent, vec3 n) {
+  return parent * (mat3x3(1.0f) - 2.0f * outerProduct(n, n));
+}
+
+mat3 makeHMatrix(mat3x3 M, vec3 u, vec3 v, vec3 d) {
+  return mat3(M * u, M * v, M * d);
+}
+
+inline vec2 beamToUV(mat3 H, vec2 point) {
+  vec3 t = H * vec3(point, 1.0f);
+  return vec2(t.x / t.z, t.y / t.z);
+}
+
 void traceBeams(vec3 apex = vec3(0, 0, 0), vec3 d = vec3(0, 0, 1),
-                vector<vec2> polygon = {vec2(-1, -1), vec2(-1, 1), vec2(1, 1),
-                                        vec2(1, -1)}) {
-  vector<vec3> crossSection;
+                vector<vec3> polygon = {vec3(-1, -1, 1), vec3(-1, 1, 1),
+                                        vec3(1, 1, 1), vec3(1, -1, 1)},
+                mat3x3 matrix = makePrimaryMatrix()) {
+  vector<vector<vec3>> crossSection = {{}};
   int objectIndex;
   mesh m = getMesh(0);
   // save a copy to mutate
@@ -671,10 +713,9 @@ void traceBeams(vec3 apex = vec3(0, 0, 0), vec3 d = vec3(0, 0, 1),
   color col = color::base::black;
   // projecting cross section to beam space
   for (int i = 0; i < polygon.size(); i++) {
-    vec3 p = vec3(polygon[i].x, polygon[i].y, 1);
-    crossSection.push_back(vec3(dot(p, u), dot(p, v), dot(p, d)));
-    cout << "PC projected cross section " << p.x << " " << p.y << " " << p.z
-         << endl;
+    vec3 p = polygon[i] - apex;
+    float z = dot(p, d);
+    crossSection[0].push_back(vec3(dot(p, u) / z, dot(p, v) / z, z));
   }
   // get a copy of all triangles to modify
   for (int i = 0; i < getSceneSize(); i++) {
@@ -686,13 +727,14 @@ void traceBeams(vec3 apex = vec3(0, 0, 0), vec3 d = vec3(0, 0, 1),
     indices.insert(indices.end(), tempIndices.begin(), tempIndices.end());
     colors.insert(colors.end(), tempColors.begin(), tempColors.end());
   }
+  cout << "PC before vertices " << endl;
   // projecting the vertices to beam space
   for (int i = 0; i < vertices.size(); i++) {
     vec3 p = vertices[i] - apex;
-    vertices[i] = vec3(dot(p, u), dot(p, v), dot(p, d));
-    float rd = 1.0f / vertices[i].z;
-    vertices[i] = vec3(vertices[i].x * rd, vertices[i].y * rd, vertices[i].z);
+    float z = dot(p, d);
+    vertices[i] = vec3(dot(p, u) / z, dot(p, v) / z, z);
   }
+  cout << "PC done all projection " << endl;
   // sort the mesh front to back
   vector<float> minZ(indices.size() / 3);
   for (int j = 0; j < indices.size() / 3; j++) {
@@ -717,30 +759,61 @@ void traceBeams(vec3 apex = vec3(0, 0, 0), vec3 d = vec3(0, 0, 1),
          << printVec(vertices[newIndices[3 * i + 2]]) << " " << endl;
   }
   // process each triangle
+  // note: crossSection is of type vector<vec3>
+  // both crossSection and vertices are modified to be in term of d, u, v
+  // where d, u, v is vector forward and traverse relative to bea,
+  // polygons are represented by linked lists of vertices
+  mat3x3 H = makeHMatrix(matrix, u, v, d);
   for (int i = 0; i < newIndices.size() / 3; i++) {
-    cout << "PC hitting first triangle? "
-         << printVec(vertices[newIndices[3 * i]]) << " "
-         << printVec(vertices[newIndices[3 * i + 1]]) << " "
-         << printVec(vertices[newIndices[3 * i + 2]]) << endl;
     vector<vertex *> resultBeam;
     vector<vertex *> result;
-    std::tie(resultBeam, result) = polygonClipping(
-        crossSection, vector<vec3>{vertices[newIndices[3 * i]],
-                                   vertices[newIndices[3 * i + 1]],
-                                   vertices[newIndices[3 * i + 2]]});
-    cout << "PC result beam and face size " << resultBeam.size() << " "
-         << result.size() << endl;
-    for (int j = 0; i < result.size(); i++) {
-      vertex *currentResult = result[i];
-      vertex *headResult = currentResult;
-      do {
-        cout << "PC result polygon" << result[i];
-        currentResult = currentResult->next;
-      } while (currentResult != headResult);
+    // TODO: make a function to turn the cross section back to beams
+    int crossID = crossSection.size() - 1;
+    vector<vector<vec3>> newCross = {}; // a copy of cross section to add in
+    while (crossID >= 0) {
+      std::tie(resultBeam, result) = polygonClipping(
+          crossSection[crossID], vector<vec3>{vertices[newIndices[3 * i]],
+                                              vertices[newIndices[3 * i + 1]],
+                                              vertices[newIndices[3 * i + 2]]});
+      cout << "PC result beam and face size " << resultBeam.size() << " "
+           << result.size() << endl;
+      for (int j = 0; j < resultBeam.size(); j++) {
+        std::vector<vec3> newCrossSection = {};
+        vertex *currentResult = resultBeam[j];
+        vertex *headResult = currentResult;
+        // convert resultBeam to 3d
+        // here check if this formula is correct
+        do {
+          vec3 projectedBeam =
+              vec3(currentResult->coords.x, currentResult->coords.y, 1);
+          currentResult = currentResult->next;
+          newCrossSection.push_back(projectedBeam);
+        } while (currentResult != headResult);
+        newCross.push_back(newCrossSection);
+      }
+      // cross section set to resultBeam convert to 3d
+      for (int j = 0; j < result.size(); j++) {
+        vertex *currentResult = result[j];
+        vertex *headResult = currentResult;
+        do {
+          // using H matrix made by combining reflection bounces
+          vec2 uv = beamToUV(H, currentResult->coords);
+          cout << "PC result polygon " << uv.x << " " << uv.y << " "
+               << uv.x * getScreenResolutionX() << " "
+               << uv.y * getScreenResolutionY() << endl;
+          currentResult = currentResult->next;
+          // TODO: render this on the screen like raster
+        } while (currentResult != headResult);
+      }
+
+      crossID--;
     }
-    // TODO: shoot out next beams to check for reflection and transmission
+    crossSection = newCross;
   }
 }
+
+void traceBeams() { traceBeams(getCameraPosition()); };
+
 int main2() {
   // vector<BRay> beam;
   // beam.push_back(BRay(vec3(0, 0, 1), vec3(-1, 1, 1)));

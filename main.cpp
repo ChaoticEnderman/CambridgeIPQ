@@ -17,7 +17,6 @@
 #include <cstdlib>
 #include <glm/glm.hpp>
 #include <iostream>
-#include <random>
 #include <vector>
 
 #include "beamtracer.h"
@@ -55,7 +54,7 @@ vec3 vertices[8];
 int indices[36];
 color colors[36];
 
-mesh prepareCubeMesh(vec3 pos) {
+mesh prepareCubeMesh(vec3 pos, color c) {
   radius = 1.0f;
   vec3 tempv[8] = {vec3(-radius, radius, radius) + pos,
                    vec3(radius, radius, radius) + pos,
@@ -79,50 +78,8 @@ mesh prepareCubeMesh(vec3 pos) {
                    // right face
                    1, 5, 3, 3, 5, 7};
   memcpy(indices, tempi, sizeof(indices));
-  color tempc[36] = {
-      // top face
-      color::base::red,
-      color::base::red,
-      color::base::red,
-      color::base::red,
-      color::base::red,
-      color::base::red,
-      // bottom face
-      color::base::green,
-      color::base::green,
-      color::base::green,
-      color::base::green,
-      color::base::green,
-      color::base::green,
-      // back face
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      color::base::blue,
-      // front face
-      color::base::yellow,
-      color::base::yellow,
-      color::base::yellow,
-      color::base::yellow,
-      color::base::yellow,
-      color::base::yellow,
-      // left face
-      color::base::cyan,
-      color::base::cyan,
-      color::base::cyan,
-      color::base::cyan,
-      color::base::cyan,
-      color::base::cyan,
-      // right face
-      color::base::magenta,
-      color::base::magenta,
-      color::base::magenta,
-      color::base::magenta,
-      color::base::magenta,
-      color::base::magenta,
-  };
+  color tempc[36];
+  std::fill(tempc, tempc + 36, c);
   memcpy(colors, tempc, sizeof(colors));
   std::vector<vec3> vecVertices3d(std::begin(vertices), std::end(vertices));
   std::vector<int> vecIndices(std::begin(indices), std::end(indices));
@@ -137,8 +94,8 @@ mesh prepareCubeMesh(vec3 pos) {
 void initSDL() {
   srand(time(0));
   setDefaultTexture();
-  mesh m1 = prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f));
-  mesh m2 = prepareCubeMesh(vec3(0.0f, 0.0f, 8.0f));
+  mesh m1 = prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f), color::base::red);
+  mesh m2 = prepareCubeMesh(vec3(2.0f, 0.0f, 4.0f), color::base::green);
   // traceRays();
 }
 
@@ -201,38 +158,23 @@ void loopSDL() {
   computeRotationMatrixes();
   computeCameraMatrixes();
   clearZBuffer();
-  // vec3 vertices3d[12][3] = {
-  //     {vec3(1.0f, -1.0f, 3.0f), vec3(1.0f, 1.0f, 3.0f),
-  //      vec3(1.0f, 1.0f, 5.0f)},
-  //     {vec3(1.0f, -1.0f, 3.0f), vec3(1.0f, -1.0f, 5.0f),
-  //      vec3(1.0f, 1.0f, 5.0f)},
-  //     {vec3(-1.0f, 1.0f, 3.0f), vec3(-1.0f, -1.0f, 3.0f),
-  //      vec3(1.0f, 1.0f, 3.0f)},
-  //     {vec3(-1.0f, -1.0f, 3.0f), vec3(1.0f, -1.0f, 3.0f),
-  //      vec3(1.0f, 1.0f, 3.0f)},
-  // };
-  // raster3DTriangle(vertices3d[0], 255, 0, 0);
-  // raster3DTriangle(vertices3d[1], 200, 0, 0);
-  // raster3DTriangle(vertices3d[2], 0, 255, 0);
-  // raster3DTriangle(vertices3d[3], 0, 200, 0);
-
-  if (newPolygonTest == 0) {
-    subject.clear();
-    clip.clear();
-    traceBeams();
-    newPolygonTest = 1;
-  } else if (newPolygonTest == 1) {
-    newPolygonTest = 2;
-    // randomizePolygon();
-    // drawIntersection();
-    nextFrame();
-  } else if (newPolygonTest == 3) {
-    newPolygonTest = 0;
-    nextFrame();
-  } else if (newPolygonTest == 4) {
-    newPolygonTest = 0;
-  }
-  // std::chrono::time_point start = std::chrono::steady_clock::now();
+  // if (newPolygonTest == 0) {
+  //   subject.clear();
+  //   clip.clear();
+  //   traceBeams();
+  //   newPolygonTest = 1;
+  // } else if (newPolygonTest == 1) {
+  //   newPolygonTest = 2;
+  //   // randomizePolygon();
+  //   // drawIntersection();
+  //   nextFrame();
+  // } else if (newPolygonTest == 3) {
+  //   newPolygonTest = 0;
+  //   nextFrame();
+  // } else if (newPolygonTest == 4) {
+  //   newPolygonTest = 0;
+  // }
+  std::chrono::time_point start = std::chrono::steady_clock::now();
   //  std::vector<vec3> subject = {vec3(50, 150, 0), vec3(50, 350, 0),
   //                               vec3(350, 350, 0), vec3(350, 150, 0)};
   //  std::vector<vec3> clip = {vec3(100, 50, 0), vec3(100, 250, 0),
@@ -240,17 +182,17 @@ void loopSDL() {
   //                            vec3(325, 75, 0)};
 
   // testSplitAnnulus();
-  //  traceBeams();
-  //    traceRays();
-  //     raster3Dcoord();
-  //   raster3DMesh(getMesh(0));
-  //   raster3DMesh(getMesh(1));
-  // std::chrono::time_point end = std::chrono::steady_clock::now();
-  // std::chrono::nanoseconds duration =
-  //     std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-  // std::cout << "Frame time: " << duration.count() << " ns\n";
+  traceBeams();
+  // traceRays();
+  // raster3Dcoord();
+  // raster3DMesh(getMesh(0));
+  // raster3DMesh(getMesh(1));
+  std::chrono::time_point end = std::chrono::steady_clock::now();
+  std::chrono::nanoseconds duration =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+  std::cout << "Frame time: " << duration.count() << " ns\n";
   // updateTexture();
-  // nextFrame();
+  nextFrame();
 }
 
 // Some code for initializing
@@ -291,47 +233,45 @@ int init() {
       movement = vec3(0.0f, 0.0f, 0.0f);
       rotation = vec3(0.0f, 0.0f, 0.0f);
       // polling for quit signal
-      switch (e.type) {
-      case SDL_QUIT:
+      if (e.type == SDL_QUIT) {
         running = false;
         break;
-      case SDL_KEYDOWN:
-
-        if (keystate[SDL_SCANCODE_W]) {
-          movement.z += 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_S]) {
-          movement.z -= 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_D]) {
-          movement.x += 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_A]) {
-          movement.x -= 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_E]) {
-          movement.y += 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_Q]) {
-          movement.y -= 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_UP]) {
-          rotation.x -= 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_DOWN]) {
-          rotation.x += 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_RIGHT]) {
-          rotation.y += 1.0f;
-        }
-        if (keystate[SDL_SCANCODE_LEFT]) {
-          rotation.y -= 1.0f;
-        }
-      case SDL_KEYUP:
-        if (keystate[SDL_SCANCODE_Z]) {
-          newPolygonTest += 1;
-        }
       }
+      if (keystate[SDL_SCANCODE_W]) {
+        movement.z += 1.0f;
+        std::cout << "w" << std::endl;
+      }
+      if (keystate[SDL_SCANCODE_S]) {
+        movement.z -= 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_D]) {
+        movement.x += 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_A]) {
+        movement.x -= 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_E]) {
+        movement.y += 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_Q]) {
+        movement.y -= 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_UP]) {
+        rotation.x -= 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_DOWN]) {
+        rotation.x += 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_RIGHT]) {
+        rotation.y += 1.0f;
+      }
+      if (keystate[SDL_SCANCODE_LEFT]) {
+        rotation.y -= 1.0f;
+      }
+      // case SDL_KEYUP:
+      //   if (keystate[SDL_SCANCODE_Z]) {
+      //     newPolygonTest += 1;
+      //   }
     }
 
     // camera movement
@@ -345,10 +285,12 @@ int init() {
     move2 = rotationMatrix * move2;
     setCameraPosition(getCameraPosition() +
                       vec3(move2.x, movement.y, move2.y) * delta * 10.0f);
+    std::cout << "movement " << move2.x << " " << movement.y << " " << move2.y
+              << std::endl;
     currentTick = SDL_GetTicks();
 
     // profiling
-    if (false) {
+    if (true) {
       std::cout << "delta " << delta << " cam position "
                 << getCameraPosition().x << " " << getCameraPosition().y << " "
                 << getCameraPosition().z << " cam rotation "
