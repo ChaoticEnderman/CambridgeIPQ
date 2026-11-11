@@ -95,8 +95,8 @@ void initSDL() {
   srand(time(0));
   setDefaultTexture();
   mesh m1 = prepareCubeMesh(vec3(0.0f, 0.0f, 4.0f), color::base::red);
-  mesh m2 = prepareCubeMesh(vec3(2.0f, 0.0f, 4.0f), color::base::green);
-  // traceRays();
+  // mesh m2 = prepareCubeMesh(vec3(2.0f, 0.0f, 4.0f), color::base::green);
+  //  traceRays();
 }
 
 void drawIntersection() {

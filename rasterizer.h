@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "camera.h"
+#include "color.h"
 #include "mesh.h"
 #include "renderer.h"
 
@@ -17,6 +18,8 @@ void raster3Dcoord();
 void raster2DTriangle(ivec2 vertices[], color c);
 void raster3DTriangle(vec3 vertices[], color c);
 void raster3DMesh(mesh m);
+
+void raster2DPolygon(std::vector<vec2> polygon, color c = color::base::red);
 
 void clearZBuffer();
 void computeRotationMatrixes();

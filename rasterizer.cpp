@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "camera.h"
+#include "color.h"
 #include "mesh.h"
 #include "renderer.h"
 
@@ -212,6 +213,25 @@ void raster3DMesh(mesh m) {
     vertices3d[2] = m.getVertices()[m.getIndices()[3 * i + 2]];
     raster3DTriangle(vertices3d, m.getVertexColors()[m.getIndices()[3 * i]]);
   }
+}
+
+void raster2DPolygon(std::vector<vec2> polygon, color c = color::base::red) {
+  setColor(c);
+  if (polygon.size() < 3) {
+    std::cout << "raster error only " << polygon.size() << " vertices "
+              << std::endl;
+  }
+  for (int i = 0; i < polygon.size() - 1; i++) {
+    std::cout << "raster 2d line " << polygon[i].x << " " << polygon[i].y << " "
+              << polygon[i + 1].x << " " << polygon[i + 1].y << " " << c.r
+              << " " << c.g << " " << c.b << std::endl;
+    raster2DLine((ivec2)polygon[i], (ivec2)polygon[i + 1]);
+  }
+  // for (int i = 0; i < polygon.size() - 2; i++) {
+  //   glm::ivec2 triangle[]{(ivec2)polygon[0], (ivec2)polygon[i],
+  //                         (ivec2)polygon[i + 1]};
+  //   raster2DTriangle(triangle, c);
+  // }
 }
 
 void computeRotationMatrixes() {
