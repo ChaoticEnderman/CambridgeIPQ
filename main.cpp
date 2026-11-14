@@ -30,7 +30,7 @@
 using namespace glm;
 constexpr double pi = 3.14159265358979323846;
 
-int newPolygonTest = 1;
+int newPolygonTest = 0;
 
 std::vector<vec3> subject = {};
 std::vector<vec3> clip = {};
@@ -100,10 +100,30 @@ void initSDL() {
 }
 
 void drawIntersection() {
+  setColor(color::base::red);
+  for (int i = 0; i < subject.size(); i++) {
+    if (i != 0) {
+      drawLine(subject[i - 1].x, subject[i - 1].y, subject[i].x, subject[i].y);
+    }
+    if (i == subject.size() - 1) {
+      drawLine(subject[i].x, subject[i].y, subject[0].x, subject[0].y);
+    }
+  }
+  for (int i = 0; i < clip.size(); i++) {
+    if (i != 0) {
+      drawLine(clip[i - 1].x, clip[i - 1].y, clip[i].x, clip[i].y);
+    }
+    if (i == clip.size() - 1) {
+      drawLine(clip[i].x, clip[i].y, clip[0].x, clip[0].y);
+    }
+  }
   setColor(color::base::green);
   int head = 0;
+  std::cout << "intersection size " << subject.size() << " " << clip.size()
+            << std::endl;
   result = testClipping(subject, clip);
   std::vector<vec2> subres = {};
+  std::cout << "intersection count " << result.size() << std::endl;
   for (int i = 0; i < result.size(); i++) {
     if (result[i].x < 1000000) {
       subres.push_back(result[i]);
@@ -128,12 +148,6 @@ void randomizePolygon() {
     int x = std::rand() % getScreenResolutionX();
     int y = std::rand() % getScreenResolutionY();
     subject.push_back(vec3(x, y, 0));
-    if (i != 0) {
-      drawLine(subject[i - 1].x, subject[i - 1].y, subject[i].x, subject[i].y);
-    }
-    if (i == size - 1) {
-      drawLine(subject[i].x, subject[i].y, subject[0].x, subject[0].y);
-    }
   }
   setColor(color::base::blue);
   size = std::rand() % 5 + 3;
@@ -142,47 +156,173 @@ void randomizePolygon() {
     int x = std::rand() % getScreenResolutionX();
     int y = std::rand() % getScreenResolutionY();
     clip.push_back(vec3(x, y, 0));
-    if (i != 0) {
-      drawLine(clip[i - 1].x, clip[i - 1].y, clip[i].x, clip[i].y);
-    }
-    if (i == size - 1) {
-      drawLine(clip[i].x, clip[i].y, clip[0].x, clip[0].y);
-    }
   }
+}
+
+void setPolygon1() {
+  subject = {vec3(25, 150, 0), vec3(50, 375, 0), vec3(350, 350, 0),
+             vec3(350, 150, 0)};
+  clip = {vec3(25, 50, 0), vec3(100, 250, 0), vec3(200, 100, 0),
+          vec3(300, 225, 0), vec3(325, 75, 0)};
+}
+
+void setPolygon2() {
+  subject = {vec3(100, 150, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 150, 0)};
+  clip = {vec3(200, 150, 0), vec3(200, 300, 0), vec3(350, 300, 0),
+          vec3(350, 150, 0)};
+}
+
+// 3. Vertex-on-vertex touch (single shared corner, no overlap area).
+void setPolygon3() {
+  subject = {vec3(100, 100, 0), vec3(100, 200, 0), vec3(200, 200, 0),
+             vec3(200, 100, 0)};
+  clip = {vec3(200, 200, 0), vec3(200, 300, 0), vec3(300, 300, 0),
+          vec3(300, 200, 0)};
+}
+
+// 4. T-junction, clip vertex touches subject edge from outside.
+// Clip apex at (200,300) lies on subject's top edge.
+void setPolygon4() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 100, 0)};
+  clip = {vec3(200, 300, 0), vec3(150, 380, 0), vec3(250, 380, 0)};
+}
+
+// 5. T-junction, clip vertex touches subject edge from inside.
+// Clip apex at (200,300) lies on subject's top edge, rest of clip is inside.
+void setPolygon5() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 100, 0)};
+  clip = {vec3(200, 300, 0), vec3(150, 200, 0), vec3(250, 200, 0)};
+}
+
+// 6. T-junction reversed: a subject vertex lies on a clip edge.
+void setPolygon6() {
+  subject = {vec3(200, 200, 0), vec3(150, 120, 0), vec3(250, 120, 0)};
+  clip = {vec3(100, 200, 0), vec3(100, 350, 0), vec3(300, 350, 0),
+          vec3(300, 200, 0)};
+}
+
+// 7. Identical polygons (every vertex and edge coincides).
+void setPolygon7() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 100, 0)};
+  clip = subject;
+}
+
+// 8. Abutting polygons sharing a full edge (touch along a segment, zero area).
+void setPolygon8() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(200, 300, 0),
+             vec3(200, 100, 0)};
+  clip = {vec3(200, 100, 0), vec3(200, 300, 0), vec3(300, 300, 0),
+          vec3(300, 100, 0)};
+}
+
+// 9. Abutting along a partial edge (clip edge is a sub-segment of subject edge;
+// clip vertices are T-junctions on the subject edge).
+void setPolygon9() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(200, 300, 0),
+             vec3(200, 100, 0)};
+  clip = {vec3(200, 150, 0), vec3(200, 250, 0), vec3(300, 250, 0),
+          vec3(300, 150, 0)};
+}
+
+// 10. Crossing through a vertex: clip diamond's vertex lands exactly on a
+// subject corner and the diamond passes through (V-V, transversal).
+void setPolygon10() {
+  subject = {vec3(100, 100, 0), vec3(100, 250, 0), vec3(250, 250, 0),
+             vec3(250, 100, 0)};
+  clip = {vec3(250, 250, 0), vec3(200, 300, 0), vec3(150, 250, 0),
+          vec3(200, 200, 0)};
+}
+
+// 11. Clip edge passes exactly through a subject vertex (edge-through-vertex).
+// Clip's diagonal edge from (50,50) to (200,200) passes exactly through the
+// subject corner (100,100), which is not a clip vertex.
+void setPolygon11() {
+  subject = {vec3(100, 100, 0), vec3(100, 250, 0), vec3(250, 250, 0),
+             vec3(250, 100, 0)};
+  clip = {vec3(50, 50, 0), vec3(200, 200, 0), vec3(50, 200, 0)};
+}
+
+// 12. Internal tangency: clip fully inside subject, sharing one vertex and
+// touching along part of an edge.
+void setPolygon12() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 100, 0)};
+  clip = {vec3(100, 100, 0), vec3(100, 200, 0), vec3(200, 200, 0),
+          vec3(200, 100, 0)};
+}
+
+// 13. Diamond inscribed in square: every clip vertex is a T-junction at an
+// edge midpoint of subject (4 touch points, intersection = whole diamond).
+void setPolygon13() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 100, 0)};
+  clip = {vec3(200, 100, 0), vec3(300, 200, 0), vec3(200, 300, 0),
+          vec3(100, 200, 0)};
+}
+
+// 14. Opposite winding: same overlapping-edge setup as case 2 but clip is
+// reversed (CW), so collinear edges run in opposite directions.
+void setPolygon14() {
+  subject = {vec3(100, 150, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 150, 0)};
+  clip = {vec3(350, 150, 0), vec3(350, 300, 0), vec3(200, 300, 0),
+          vec3(200, 150, 0)};
+}
+
+// 15. Collinear edge with clip vertices outside the subject edge's extent
+// (clip edge fully contains subject edge, so subject vertices are
+// T-junctions on the clip edge).
+void setPolygon15() {
+  subject = {vec3(150, 100, 0), vec3(150, 250, 0), vec3(250, 250, 0),
+             vec3(250, 100, 0)};
+  clip = {vec3(100, 250, 0), vec3(100, 350, 0), vec3(300, 350, 0),
+          vec3(300, 250, 0)};
+}
+
+// 16. Vertex touching vertex from inside a concave notch: clip tip lands
+// exactly on the reflex vertex of a concave subject.
+void setPolygon16() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(200, 200, 0),
+             vec3(300, 300, 0), vec3(300, 100, 0)};
+  clip = {vec3(200, 200, 0), vec3(150, 120, 0), vec3(250, 120, 0)};
+}
+
+// 17. Two shared vertices with a diagonal crossing between them
+// (clip shares subject's bottom-left and top-right corners).
+void setPolygon17() {
+  subject = {vec3(100, 100, 0), vec3(100, 300, 0), vec3(300, 300, 0),
+             vec3(300, 100, 0)};
+  clip = {vec3(100, 100, 0), vec3(200, 250, 0), vec3(300, 300, 0),
+          vec3(250, 150, 0)};
 }
 
 // Code that execute every frames
 void loopSDL() {
-  clear();
+  // clear();
 
   computeRotationMatrixes();
   computeCameraMatrixes();
   clearZBuffer();
-  // if (newPolygonTest == 0) {
-  //   subject.clear();
-  //   clip.clear();
-  //   traceBeams();
-  //   newPolygonTest = 1;
-  // } else if (newPolygonTest == 1) {
-  //   newPolygonTest = 2;
-  //   // randomizePolygon();
-  //   // drawIntersection();
-  //   nextFrame();
-  // } else if (newPolygonTest == 3) {
-  //   newPolygonTest = 0;
-  //   nextFrame();
-  // } else if (newPolygonTest == 4) {
-  //   newPolygonTest = 0;
-  // }
+  std::cout << "new polygon here " << newPolygonTest << std::endl;
+  if (newPolygonTest == 0) {
+    clear();
+    subject.clear();
+    clip.clear();
+    newPolygonTest = 1;
+    // randomizePolygon();
+    setPolygon1();
+  } else if (newPolygonTest == 2) {
+    drawIntersection();
+  } else if (newPolygonTest == 3) {
+    newPolygonTest = 0;
+  }
   std::chrono::time_point start = std::chrono::steady_clock::now();
-  //  std::vector<vec3> subject = {vec3(50, 150, 0), vec3(50, 350, 0),
-  //                               vec3(350, 350, 0), vec3(350, 150, 0)};
-  //  std::vector<vec3> clip = {vec3(100, 50, 0), vec3(100, 250, 0),
-  //                            vec3(200, 100, 0), vec3(325, 225, 0),
-  //                            vec3(325, 75, 0)};
-
   // testSplitAnnulus();
-  traceBeams();
+  // traceBeams();
   // traceRays();
   // raster3Dcoord();
   // raster3DMesh(getMesh(0));
@@ -190,9 +330,9 @@ void loopSDL() {
   std::chrono::time_point end = std::chrono::steady_clock::now();
   std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-  std::cout << "Frame time: " << duration.count() << " ns\n";
-  // updateTexture();
-  nextFrame();
+  // std::cout << "Frame time: " << duration.count() << " ns\n";
+  //  updateTexture();
+  nextFrame(); // this is mandatory for some reason
 }
 
 // Some code for initializing
@@ -268,10 +408,12 @@ int init() {
       if (keystate[SDL_SCANCODE_LEFT]) {
         rotation.y -= 1.0f;
       }
-      // case SDL_KEYUP:
-      //   if (keystate[SDL_SCANCODE_Z]) {
-      //     newPolygonTest += 1;
-      //   }
+      if (e.type == SDL_KEYDOWN && e.key.repeat == 0) {
+        if (e.key.keysym.sym == SDLK_TAB) {
+          newPolygonTest += 1;
+          // std::cout << "new polygon test " << newPolygonTest << std::endl;
+        }
+      }
     }
 
     // camera movement
@@ -285,12 +427,13 @@ int init() {
     move2 = rotationMatrix * move2;
     setCameraPosition(getCameraPosition() +
                       vec3(move2.x, movement.y, move2.y) * delta * 10.0f);
-    std::cout << "movement " << move2.x << " " << movement.y << " " << move2.y
-              << std::endl;
+    // std::cout << "movement " << move2.x << " " << movement.y << " " <<
+    // move2.y
+    //           << std::endl;
     currentTick = SDL_GetTicks();
 
     // profiling
-    if (true) {
+    if (false) {
       std::cout << "delta " << delta << " cam position "
                 << getCameraPosition().x << " " << getCameraPosition().y << " "
                 << getCameraPosition().z << " cam rotation "
